@@ -1,6 +1,6 @@
 import "./App.css";
 
-function App(): JSX.Element {
+const App = (): JSX.Element => {
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -141,6 +141,6 @@ limit 100;`}</code>
       </main>
     </div>
   );
-}
+};
 
 export default App;
