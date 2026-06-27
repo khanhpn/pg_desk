@@ -1,5 +1,6 @@
-import type { QueryRunResult } from "@electron/types/query";
 import { useState } from "react";
+import { buildSelectRelationSql } from "@/utils/sql";
+import type { QueryRunResult } from "@electron/types/query";
 
 export const useSqlQuery = () => {
   const [sql, setSql] = useState(`select
@@ -11,12 +12,12 @@ export const useSqlQuery = () => {
   const [queryMessage, setQueryMessage] = useState("Ready");
   const [isRunningQuery, setIsRunningQuery] = useState(false);
 
-  const handleRunQuery = async (): Promise<void> => {
+  const runSqlText = async (nextSql: string): Promise<void> => {
     setIsRunningQuery(true);
     setQueryMessage("Running query...");
 
     try {
-      const result = await window.pgdesk.query.run(sql);
+      const result = await window.pgdesk.query.run(nextSql);
 
       setQueryResult(result);
 
@@ -36,6 +37,20 @@ export const useSqlQuery = () => {
     }
   };
 
+  const handleRunQuery = async (): Promise<void> => {
+    await runSqlText(sql);
+  };
+
+  const handleOpenRelation = async (
+    schema: string,
+    relation: string,
+  ): Promise<void> => {
+    const nextSql = buildSelectRelationSql(schema, relation, 100);
+
+    setSql(nextSql);
+    await runSqlText(nextSql);
+  };
+
   return {
     sql,
     setSql,
@@ -43,5 +58,6 @@ export const useSqlQuery = () => {
     queryMessage,
     isRunningQuery,
     handleRunQuery,
+    handleOpenRelation,
   };
 };

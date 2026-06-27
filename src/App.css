@@ -675,3 +675,28 @@ button {
   color: #536074;
   font-size: 11px;
 }
+
+.tree-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+
+.tree-button:hover {
+  background: #131b28;
+}
+
+.tree-button.selected {
+  background: #1d2a44;
+  color: #f8fafc;
+}
+
+.tree-button.selected .tree-dot {
+  background: #58a6ff;
+}
+
+.tree-button.selected .tree-dot.view {
+  background: #8b949e;
+}

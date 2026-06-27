@@ -1,4 +1,6 @@
+import { useState } from "react";
 import "@/App.css";
+import type { PgRelationInfo } from "@/types/metadata";
 
 // imports components
 import { QueryToolbar } from "@/components/QueryToolbar";
@@ -36,7 +38,19 @@ const App = () => {
     queryMessage,
     isRunningQuery,
     handleRunQuery,
+    handleOpenRelation,
   } = useSqlQuery();
+
+  const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
+    null,
+  );
+
+  const handleSelectRelation = async (
+    relation: PgRelationInfo,
+  ): Promise<void> => {
+    setSelectedRelationKey(`${relation.schema}.${relation.name}`);
+    await handleOpenRelation(relation.schema, relation.name);
+  };
 
   return (
     <div className="app-shell">
@@ -50,6 +64,8 @@ const App = () => {
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}
         refreshExplorer={refreshExplorer}
+        selectedRelationKey={selectedRelationKey}
+        handleOpenRelation={handleSelectRelation}
       />
 
       <main className="workspace">

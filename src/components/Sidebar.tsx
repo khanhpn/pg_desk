@@ -1,7 +1,7 @@
 import { ConnectionPanel } from "@/components/ConnectionPanel";
 import { DatabaseExplorer } from "@/components/DatabaseExplorer";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
-import type { PgSchemaInfo } from "@/types/metadata";
+import type { PgSchemaInfo, PgRelationInfo } from "@/types/metadata";
 
 type SidebarProps = {
   connectionForm: PgConnectionForm;
@@ -17,6 +17,8 @@ type SidebarProps = {
   explorerMessage: string;
   isLoadingExplorer: boolean;
   refreshExplorer: () => Promise<void>;
+  selectedRelationKey: string | null;
+  handleOpenRelation: (relation: PgRelationInfo) => Promise<void>;
 };
 
 export const Sidebar = ({
@@ -29,6 +31,8 @@ export const Sidebar = ({
   explorerMessage,
   isLoadingExplorer,
   refreshExplorer,
+  selectedRelationKey,
+  handleOpenRelation,
 }: SidebarProps) => {
   return (
     <aside className="sidebar">
@@ -67,6 +71,8 @@ export const Sidebar = ({
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}
         refreshExplorer={refreshExplorer}
+        selectedRelationKey={selectedRelationKey}
+        handleOpenRelation={handleOpenRelation}
       />
     </aside>
   );

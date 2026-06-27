@@ -1,10 +1,16 @@
-import type { PgSchemaInfo } from "@/types/metadata";
+import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
 type DatabaseExplorerProps = {
   schemas: PgSchemaInfo[];
   explorerMessage: string;
   isLoadingExplorer: boolean;
   refreshExplorer: () => Promise<void>;
+  selectedRelationKey: string | null;
+  handleOpenRelation: (relation: PgRelationInfo) => Promise<void>;
+};
+
+const buildRelationKey = (relation: PgRelationInfo): string => {
+  return `${relation.schema}.${relation.name}`;
 };
 
 export const DatabaseExplorer = ({
@@ -12,7 +18,9 @@ export const DatabaseExplorer = ({
   explorerMessage,
   isLoadingExplorer,
   refreshExplorer,
-}: DatabaseExplorerProps): JSX.Element => {
+  selectedRelationKey,
+  handleOpenRelation,
+}: DatabaseExplorerProps) => {
   return (
     <div className="tree">
       <div className="tree-section-row">
@@ -46,15 +54,28 @@ export const DatabaseExplorer = ({
               <div className="tree-empty">No tables</div>
             )}
 
-            {schema.tables.map((table) => (
-              <div
-                className="tree-item table"
-                key={`${table.schema}.${table.name}`}
-              >
-                <span className="tree-dot" />
-                <span>{table.name}</span>
-              </div>
-            ))}
+            {schema.tables.map((table) => {
+              const relationKey = buildRelationKey(table);
+              const isSelected = selectedRelationKey === relationKey;
+
+              return (
+                <button
+                  className={
+                    isSelected
+                      ? "tree-item table tree-button selected"
+                      : "tree-item table tree-button"
+                  }
+                  type="button"
+                  key={relationKey}
+                  onClick={() => {
+                    void handleOpenRelation(table);
+                  }}
+                >
+                  <span className="tree-dot" />
+                  <span>{table.name}</span>
+                </button>
+              );
+            })}
 
             <div className="tree-label">views</div>
 
@@ -62,15 +83,28 @@ export const DatabaseExplorer = ({
               <div className="tree-empty">No views</div>
             )}
 
-            {schema.views.map((view) => (
-              <div
-                className="tree-item table"
-                key={`${view.schema}.${view.name}`}
-              >
-                <span className="tree-dot view" />
-                <span>{view.name}</span>
-              </div>
-            ))}
+            {schema.views.map((view) => {
+              const relationKey = buildRelationKey(view);
+              const isSelected = selectedRelationKey === relationKey;
+
+              return (
+                <button
+                  className={
+                    isSelected
+                      ? "tree-item table tree-button selected"
+                      : "tree-item table tree-button"
+                  }
+                  type="button"
+                  key={relationKey}
+                  onClick={() => {
+                    void handleOpenRelation(view);
+                  }}
+                >
+                  <span className="tree-dot view" />
+                  <span>{view.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
