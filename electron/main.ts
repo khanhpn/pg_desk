@@ -1,13 +1,15 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { registerAppIpc } from "./ipc/app-ipc";
-import { registerConnectionIpc } from "./ipc/connection-ipc";
+import { registerAppIpc } from "@ipc/app-ipc";
+import { registerConnectionIpc } from "@ipc/connection-ipc";
+import { registerQueryIpc } from "@ipc/query-ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 registerAppIpc();
 registerConnectionIpc();
+registerQueryIpc();
 
 process.env.APP_ROOT = path.join(__dirname, "..");
 

@@ -31,7 +31,7 @@ export const useConnectionTest = () => {
     setConnectionMessage("Testing connection...");
 
     try {
-      const result = await window.pgdesk.connection.test({
+      const result = await window.pgdesk.connection.connect({
         host: connectionForm.host,
         port: Number(connectionForm.port),
         database: connectionForm.database,

@@ -1,4 +1,33 @@
-export const ResultPanel = () => {
+import type { QueryRunResult } from "@electron/types/query";
+
+type ResultPanelProps = {
+  queryResult: QueryRunResult | null;
+  queryMessage: string;
+};
+
+const formatCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return "NULL";
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+};
+
+export const ResultPanel = ({
+  queryResult,
+  queryMessage,
+}: ResultPanelProps): JSX.Element => {
+  const hasRows = Boolean(queryResult?.rows.length);
+  const hasColumns = Boolean(queryResult?.columns.length);
+
   return (
     <section className="result-panel">
       <div className="result-tabs">
@@ -8,53 +37,52 @@ export const ResultPanel = () => {
       </div>
 
       <div className="grid-wrap">
-        <table className="result-grid">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>id</th>
-              <th>name</th>
-              <th>email</th>
-              <th>created_at</th>
-            </tr>
-          </thead>
+        {!queryResult && (
+          <div className="empty-result">No query executed yet.</div>
+        )}
 
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>1</td>
-              <td>Khanh</td>
-              <td>khanh@example.com</td>
-              <td>2026-06-27 09:30:12</td>
-            </tr>
+        {queryResult && !queryResult.ok && (
+          <div className="query-error-message">{queryResult.message}</div>
+        )}
 
-            <tr>
-              <td>2</td>
-              <td>2</td>
-              <td>Minh</td>
-              <td>
-                <span className="null-value">NULL</span>
-              </td>
-              <td>2026-06-27 10:12:01</td>
-            </tr>
+        {queryResult?.ok && !hasRows && (
+          <div className="empty-result">{queryMessage}</div>
+        )}
 
-            <tr>
-              <td>3</td>
-              <td>3</td>
-              <td>Dev User</td>
-              <td>dev@example.com</td>
-              <td>2026-06-27 11:41:52</td>
-            </tr>
+        {queryResult?.ok && hasRows && hasColumns && (
+          <table className="result-grid">
+            <thead>
+              <tr>
+                <th>#</th>
 
-            <tr>
-              <td>4</td>
-              <td>4</td>
-              <td>Test User</td>
-              <td>test@example.com</td>
-              <td>2026-06-27 12:06:44</td>
-            </tr>
-          </tbody>
-        </table>
+                {queryResult.columns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {queryResult.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  <td>{rowIndex + 1}</td>
+
+                  {queryResult.columns.map((column) => {
+                    const value = row[column];
+                    const isNull = value === null || value === undefined;
+
+                    return (
+                      <td key={column}>
+                        <span className={isNull ? "null-value" : undefined}>
+                          {formatCellValue(value)}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </section>
   );

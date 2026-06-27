@@ -92,7 +92,7 @@ export const ConnectionPanel = ({
         disabled={isTestingConnection}
         onClick={handleTestConnection}
       >
-        {isTestingConnection ? "Testing..." : "Test connection"}
+        {isTestingConnection ? "Connecting..." : "Connect"}
       </button>
 
       <div className={connectionMessageClassName}>{connectionMessage}</div>

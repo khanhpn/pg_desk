@@ -571,3 +571,37 @@ button {
 .connection-message.error {
   color: #f87171;
 }
+
+.sql-editor {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  outline: none;
+  resize: none;
+  margin: 0;
+  padding: 16px 18px;
+  color: #d6deeb;
+  background: transparent;
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 22px;
+}
+
+.run-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.empty-result {
+  padding: 14px;
+  color: #7d8590;
+  font-size: 12px;
+}
+
+.query-error-message {
+  padding: 14px;
+  color: #f87171;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}

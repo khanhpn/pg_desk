@@ -1,8 +1,23 @@
-export const QueryToolbar = () => {
+type QueryToolbarProps = {
+  isRunningQuery: boolean;
+  queryMessage: string;
+  handleRunQuery: () => Promise<void>;
+};
+
+export const QueryToolbar = ({
+  isRunningQuery,
+  queryMessage,
+  handleRunQuery,
+}: QueryToolbarProps): JSX.Element => {
   return (
     <section className="query-toolbar">
-      <button className="run-button" type="button">
-        ▶ Run
+      <button
+        className="run-button"
+        type="button"
+        disabled={isRunningQuery}
+        onClick={handleRunQuery}
+      >
+        {isRunningQuery ? "Running..." : "▶ Run"}
       </button>
 
       <button className="toolbar-button" type="button">
@@ -25,7 +40,7 @@ export const QueryToolbar = () => {
         </select>
       </label>
 
-      <div className="query-meta">42ms · 128 rows</div>
+      <div className="query-meta">{queryMessage}</div>
     </section>
   );
 };

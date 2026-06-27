@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 
 const electronAlias = {
   "@electron": path.resolve(__dirname, "electron"),
+  "@ipc": path.resolve(__dirname, "electron/ipc"),
 };
 
 // https://vitejs.dev/config/
