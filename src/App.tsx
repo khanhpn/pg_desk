@@ -9,33 +9,59 @@ const App = (): JSX.Element => {
             <div className="app-title">pgmini</div>
             <div className="app-subtitle">PostgreSQL Client</div>
           </div>
-          <button className="icon-button">+</button>
+
+          <button className="icon-button" type="button">
+            +
+          </button>
         </div>
 
         <div className="connection-card">
-          <div className="connection-status"></div>
+          <div className="connection-status" />
+
           <div>
-            <div className="connection-name">Local PostgreSQL</div>
+            <div className="connection-name">local / postgres</div>
             <div className="connection-meta">localhost:5432</div>
           </div>
         </div>
 
         <div className="tree">
-          <div className="tree-section">DATABASE</div>
+          <div className="tree-section">EXPLORER</div>
 
-          <div className="tree-item active">▾ app_development</div>
+          <div className="tree-item active database-node">
+            <span className="tree-caret">▾</span>
+            <span>app_development</span>
+          </div>
 
           <div className="tree-indent">
-            <div className="tree-item">▾ public</div>
+            <div className="tree-item schema">
+              <span className="tree-caret">▾</span>
+              <span>public</span>
+            </div>
 
             <div className="tree-indent">
               <div className="tree-label">tables</div>
-              <div className="tree-item table">users</div>
-              <div className="tree-item table">posts</div>
-              <div className="tree-item table">orders</div>
+
+              <div className="tree-item table">
+                <span className="tree-dot" />
+                <span>users</span>
+              </div>
+
+              <div className="tree-item table">
+                <span className="tree-dot" />
+                <span>posts</span>
+              </div>
+
+              <div className="tree-item table">
+                <span className="tree-dot" />
+                <span>orders</span>
+              </div>
 
               <div className="tree-label">views</div>
-              <div className="tree-item table">active_users</div>
+
+              <div className="tree-item table">
+                <span className="tree-dot view" />
+                <span>active_users</span>
+              </div>
             </div>
           </div>
         </div>
@@ -46,28 +72,40 @@ const App = (): JSX.Element => {
           <div className="tabs">
             <div className="tab active">Query 1</div>
             <div className="tab">users</div>
-            <button className="new-tab">+</button>
+
+            <button className="new-tab" type="button">
+              +
+            </button>
           </div>
 
           <div className="connection-info">
-            <span className="dot"></span>
+            <span className="dot" />
             connected
           </div>
         </header>
 
         <section className="query-toolbar">
-          <button className="run-button">▶ Run</button>
-          <button className="toolbar-button">■ Stop</button>
-          <button className="toolbar-button">Format</button>
+          <button className="run-button" type="button">
+            ▶ Run
+          </button>
 
-          <div className="toolbar-separator"></div>
+          <button className="toolbar-button" type="button">
+            ■ Stop
+          </button>
+
+          <button className="toolbar-button" type="button">
+            Format
+          </button>
+
+          <div className="toolbar-separator" />
 
           <label className="limit-label">
-            Limit
-            <select>
-              <option>100</option>
-              <option>500</option>
-              <option>1000</option>
+            <span>Limit</span>
+
+            <select defaultValue="100">
+              <option value="100">100</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
             </select>
           </label>
 
@@ -110,6 +148,7 @@ limit 100;`}</code>
                   <th>created_at</th>
                 </tr>
               </thead>
+
               <tbody>
                 <tr>
                   <td>1</td>
@@ -118,6 +157,7 @@ limit 100;`}</code>
                   <td>khanh@example.com</td>
                   <td>2026-06-27 09:30:12</td>
                 </tr>
+
                 <tr>
                   <td>2</td>
                   <td>2</td>
@@ -127,12 +167,21 @@ limit 100;`}</code>
                   </td>
                   <td>2026-06-27 10:12:01</td>
                 </tr>
+
                 <tr>
                   <td>3</td>
                   <td>3</td>
                   <td>Dev User</td>
                   <td>dev@example.com</td>
                   <td>2026-06-27 11:41:52</td>
+                </tr>
+
+                <tr>
+                  <td>4</td>
+                  <td>4</td>
+                  <td>Test User</td>
+                  <td>test@example.com</td>
+                  <td>2026-06-27 12:06:44</td>
                 </tr>
               </tbody>
             </table>
