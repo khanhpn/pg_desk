@@ -2,16 +2,17 @@ appId: com.pgdesk.app
 productName: pgdesk
 
 directories:
-  output: dist
+  output: dist-release
 
 files:
-  - dist/**
-  - dist-electron/**
+  - dist/**/*
+  - dist-electron/**/*
   - package.json
 
 mac:
   target:
     - dmg
+    - zip
   category: public.app-category.developer-tools
 
 win:

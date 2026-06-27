@@ -37,15 +37,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build macOS app
-        run: pnpm exec electron-builder --mac dmg --publish never
+        run: pnpm run release:mac
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: pgdesk-macos
           path: |
-            dist/*.dmg
-            dist/*.zip
+            dist-release/*.dmg
+            dist-release/*.zip
           if-no-files-found: error
 
   build-windows:
@@ -76,15 +76,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Windows app
-        run: pnpm exec electron-builder --win nsis --publish never
+        run: pnpm run release:win
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v5
         with:
           name: pgdesk-windows
           path: |
-            dist/*.exe
-            dist/*.msi
+            dist-release/*.exe
+            dist-release/*.msi
           if-no-files-found: error
 
   create-release:
