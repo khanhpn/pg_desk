@@ -1,3 +1,12 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+dist-electron
+dist-ssr
+release
+
 # Logs
 logs
 *.log
@@ -7,19 +16,36 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-electron
-dist-ssr
-*.local
+# Environment
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
+# Editor / IDE
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Lint / format cache
+.eslintcache
+
+# Test coverage
+coverage
+
+# Vite
+*.local
+
+# Electron-builder artifacts (outside release/)
+*.blockmap

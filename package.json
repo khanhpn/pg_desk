@@ -1,11 +1,14 @@
 {
   "name": "pgdesk",
+  "description": "A lightweight PostgreSQL desktop client",
+  "author": "Khanh Pham",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "build:mac": "tsc && vite build && electron-builder --mac dmg zip",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write .",
