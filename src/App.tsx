@@ -1,12 +1,20 @@
+import { useState } from "react";
 import "./App.css";
 
 const App = (): JSX.Element => {
+  const [ipcMessage, setIpcMessage] = useState("not tested");
+
+  const handlePing = async (): Promise<void> => {
+    const result = await window.pgdesk.app.ping();
+    setIpcMessage(`${result.message} · ${result.timestamp}`);
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-header">
           <div>
-            <div className="app-title">pgmini</div>
+            <div className="app-title">pgdesk</div>
             <div className="app-subtitle">PostgreSQL Client</div>
           </div>
 
@@ -78,10 +86,14 @@ const App = (): JSX.Element => {
             </button>
           </div>
 
-          <div className="connection-info">
+          <button
+            className="connection-info connection-info-button"
+            type="button"
+            onClick={handlePing}
+          >
             <span className="dot" />
-            connected
-          </div>
+            {ipcMessage}
+          </button>
         </header>
 
         <section className="query-toolbar">

@@ -1,8 +1,16 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+ipcMain.handle("app:ping", async () => {
+  return {
+    ok: true,
+    message: "pong from Electron main process",
+    timestamp: new Date().toISOString(),
+  };
+});
 
 // The built directory structure
 //

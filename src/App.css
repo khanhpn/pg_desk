@@ -482,3 +482,13 @@ button {
   color: #687386;
   font-style: italic;
 }
+
+.connection-info-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.connection-info-button:hover {
+  color: #d6deeb;
+}
