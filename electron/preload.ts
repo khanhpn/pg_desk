@@ -1,21 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
-
-type PgConnectionConfig = {
-  host: string;
-  port: number;
-  database: string;
-  user: string;
-  password: string;
-  ssl: boolean;
-};
-
-type PgConnectionTestResult = {
-  ok: boolean;
-  message: string;
-  database?: string;
-  user?: string;
-  serverVersion?: string;
-};
+import type {
+  PgConnectionConfig,
+  PgConnectionTestResult,
+} from "@electron/types/connection";
 
 const pgdeskApi = {
   app: {

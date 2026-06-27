@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+import type {
+  PgConnectionConfig,
+  PgConnectionTestResult,
+} from "@electron/types/connection";
+
 type PgDeskApi = {
   connection: {
     test: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
