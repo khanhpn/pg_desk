@@ -4,9 +4,54 @@ import "./App.css";
 const App = (): JSX.Element => {
   const [ipcMessage, setIpcMessage] = useState("not tested");
 
+  const [connectionForm, setConnectionForm] = useState({
+    host: "localhost",
+    port: "5432",
+    database: "postgres",
+    user: "postgres",
+    password: "",
+    ssl: false,
+  });
+
+  const [connectionMessage, setConnectionMessage] = useState("Not connected");
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+
   const handlePing = async (): Promise<void> => {
     const result = await window.pgdesk.app.ping();
     setIpcMessage(`${result.message} · ${result.timestamp}`);
+  };
+
+  const updateConnectionField = (
+    field: keyof typeof connectionForm,
+    value: string | boolean,
+  ): void => {
+    setConnectionForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const handleTestConnection = async (): Promise<void> => {
+    setIsTestingConnection(true);
+    setConnectionMessage("Testing connection...");
+
+    const result = await window.pgdesk.connection.test({
+      host: connectionForm.host,
+      port: Number(connectionForm.port),
+      database: connectionForm.database,
+      user: connectionForm.user,
+      password: connectionForm.password,
+      ssl: connectionForm.ssl,
+    });
+
+    setIsTestingConnection(false);
+
+    if (result.ok) {
+      setConnectionMessage(`Connected: ${result.database} / ${result.user}`);
+      return;
+    }
+
+    setConnectionMessage(`Error: ${result.message}`);
   };
 
   return (
@@ -29,6 +74,88 @@ const App = (): JSX.Element => {
           <div>
             <div className="connection-name">local / postgres</div>
             <div className="connection-meta">localhost:5432</div>
+          </div>
+        </div>
+        <div className="connection-form">
+          <label>
+            <span>Host</span>
+            <input
+              value={connectionForm.host}
+              onChange={(event) =>
+                updateConnectionField("host", event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Port</span>
+            <input
+              value={connectionForm.port}
+              onChange={(event) =>
+                updateConnectionField("port", event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Database</span>
+            <input
+              value={connectionForm.database}
+              onChange={(event) =>
+                updateConnectionField("database", event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>User</span>
+            <input
+              value={connectionForm.user}
+              onChange={(event) =>
+                updateConnectionField("user", event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input
+              type="password"
+              value={connectionForm.password}
+              onChange={(event) =>
+                updateConnectionField("password", event.target.value)
+              }
+            />
+          </label>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={connectionForm.ssl}
+              onChange={(event) =>
+                updateConnectionField("ssl", event.target.checked)
+              }
+            />
+            <span>SSL</span>
+          </label>
+
+          <button
+            className="test-connection-button"
+            type="button"
+            disabled={isTestingConnection}
+            onClick={handleTestConnection}
+          >
+            {isTestingConnection ? "Testing..." : "Test connection"}
+          </button>
+
+          <div
+            className={
+              connectionMessage.startsWith("Error")
+                ? "connection-message error"
+                : "connection-message"
+            }
+          >
+            {connectionMessage}
           </div>
         </div>
 

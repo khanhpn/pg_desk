@@ -492,3 +492,82 @@ button {
 .connection-info-button:hover {
   color: #d6deeb;
 }
+
+.connection-form {
+  margin: 0 10px 10px;
+  padding: 9px;
+  border: 1px solid #1d2430;
+  border-radius: 8px;
+  background: #0f1621;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.connection-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.connection-form label span {
+  font-size: 10px;
+  color: #7d8590;
+}
+
+.connection-form input {
+  height: 24px;
+  border: 1px solid #253044;
+  border-radius: 6px;
+  background: #0b111c;
+  color: #d6deeb;
+  padding: 0 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.connection-form input:focus {
+  border-color: #2563eb;
+}
+
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 7px !important;
+}
+
+.checkbox-row input {
+  width: 13px;
+  height: 13px;
+}
+
+.test-connection-button {
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.test-connection-button:hover {
+  background: #1d4ed8;
+}
+
+.test-connection-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.connection-message {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #22c55e;
+  word-break: break-word;
+}
+
+.connection-message.error {
+  color: #f87171;
+}

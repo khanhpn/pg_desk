@@ -1,8 +1,20 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+type PgConnectionConfig = {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+  ssl: boolean;
+};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { Pool } = require("pg") as typeof import("pg");
 
 ipcMain.handle("app:ping", async () => {
   return {
@@ -34,6 +46,63 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null;
 const iconPath = path.join(process.env.VITE_PUBLIC, "pgdesk.png");
+
+// Helper function to get error message from an unknown error
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+};
+
+ipcMain.handle(
+  "connection:test",
+  async (_event, config: PgConnectionConfig) => {
+    const pool = new Pool({
+      host: config.host,
+      port: config.port,
+      database: config.database,
+      user: config.user,
+      password: config.password,
+      ssl: config.ssl ? { rejectUnauthorized: false } : false,
+      connectionTimeoutMillis: 3000,
+      max: 1,
+    });
+
+    try {
+      const client = await pool.connect();
+
+      try {
+        const result = await client.query(`
+        select
+          current_database() as database,
+          current_user as user,
+          version() as server_version
+      `);
+
+        const row = result.rows[0];
+
+        return {
+          ok: true,
+          message: "Connected successfully",
+          database: row.database,
+          user: row.user,
+          serverVersion: row.server_version,
+        };
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      return {
+        ok: false,
+        message: getErrorMessage(error),
+      };
+    } finally {
+      await pool.end();
+    }
+  },
+);
 
 function createWindow() {
   win = new BrowserWindow({
