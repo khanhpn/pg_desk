@@ -33,10 +33,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+const iconPath = path.join(process.env.VITE_PUBLIC, "pgdesk.png");
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
@@ -72,5 +73,9 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+if (process.platform === "darwin") {
+  app.dock.setIcon(iconPath);
+}
 
 app.whenReady().then(createWindow);
