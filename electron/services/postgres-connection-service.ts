@@ -12,6 +12,10 @@ const { Pool } = require("pg") as typeof import("pg");
 
 let activePool: PgPool | null = null;
 
+export const getActivePostgresPool = (): PgPool | null => {
+  return activePool;
+};
+
 const createPool = (config: PgConnectionConfig): PgPool => {
   return new Pool({
     host: config.host.trim(),

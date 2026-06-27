@@ -632,3 +632,71 @@ button {
 .editor-panel .cm-focused {
   outline: none;
 }
+
+.tree-section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.tree-refresh-button {
+  width: 24px;
+  height: 22px;
+  border: 1px solid #253044;
+  border-radius: 6px;
+  background: #101722;
+  color: #8d98aa;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tree-refresh-button:hover {
+  color: #d6deeb;
+  background: #162131;
+}
+
+.tree-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tree-message {
+  padding: 0 8px 8px;
+  color: #667387;
+  font-size: 10px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.tree-empty {
+  height: 22px;
+  padding: 4px 8px 4px 26px;
+  color: #536074;
+  font-size: 11px;
+}
+
+.tree-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+
+.tree-button:hover {
+  background: #131b28;
+}
+
+.tree-button.selected {
+  background: #1d2a44;
+  color: #f8fafc;
+}
+
+.tree-button.selected .tree-dot {
+  background: #58a6ff;
+}
+
+.tree-button.selected .tree-dot.view {
+  background: #8b949e;
+}

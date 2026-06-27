@@ -1,7 +1,13 @@
 import { useState } from "react";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
 
-export const useConnectionTest = () => {
+type UseConnectionTestOptions = {
+  onConnected?: () => void | Promise<void>;
+};
+
+export const useConnectionTest = ({
+  onConnected,
+}: UseConnectionTestOptions = {}) => {
   const [connectionForm, setConnectionForm] = useState<PgConnectionForm>(
     () => ({
       host: "localhost",
@@ -42,6 +48,7 @@ export const useConnectionTest = () => {
 
       if (result.ok) {
         setConnectionMessage(`Connected: ${result.database} / ${result.user}`);
+        await onConnected?.();
         return;
       }
 

@@ -4,12 +4,14 @@ import path from "node:path";
 import { registerAppIpc } from "@ipc/app-ipc";
 import { registerConnectionIpc } from "@ipc/connection-ipc";
 import { registerQueryIpc } from "@ipc/query-ipc";
+import { registerMetadataIpc } from "@electron/ipc/metadata-ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 registerAppIpc();
 registerConnectionIpc();
 registerQueryIpc();
+registerMetadataIpc();
 
 process.env.APP_ROOT = path.join(__dirname, "..");
 
