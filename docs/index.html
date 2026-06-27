@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PgDesk - PostgreSQL Desktop Client</title>
+    <meta
+      name="description"
+      content="pg_desk is a modern PostgreSQL desktop client for developers."
+    />
+
+    <style>
+      :root {
+        --bg: #0d1117;
+        --bg-soft: #161b22;
+        --card: #161b22;
+        --border: #30363d;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --primary: #58a6ff;
+        --primary-soft: rgba(88, 166, 255, 0.12);
+        --green: #3fb950;
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(88, 166, 255, 0.14),
+            transparent 35%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(63, 185, 80, 0.1),
+            transparent 30%
+          ),
+          var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .container {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 0;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        font-size: 22px;
+      }
+
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--green));
+        display: grid;
+        place-items: center;
+        color: #081018;
+        font-weight: 900;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .nav-links a:hover {
+        color: var(--text);
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 56px;
+        align-items: center;
+        min-height: calc(100vh - 90px);
+        padding: 56px 0 96px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        background: var(--primary-soft);
+        color: var(--primary);
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 22px;
+      }
+
+      h1 {
+        font-size: clamp(42px, 7vw, 76px);
+        line-height: 1;
+        letter-spacing: -0.07em;
+        margin: 0 0 22px;
+      }
+
+      .gradient-text {
+        background: linear-gradient(90deg, #e6edf3, #58a6ff, #3fb950);
+        background-clip: text;
+        color: transparent;
+      }
+
+      .hero p {
+        font-size: 19px;
+        color: var(--muted);
+        max-width: 620px;
+        margin: 0 0 32px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 0 18px;
+        border-radius: 12px;
+        font-weight: 700;
+        border: 1px solid var(--border);
+        transition: 0.16s ease;
+      }
+
+      .btn-primary {
+        background: var(--text);
+        color: #0d1117;
+        border-color: var(--text);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 22px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .stats strong {
+        color: var(--text);
+      }
+
+      .window {
+        border: 1px solid var(--border);
+        background: rgba(22, 27, 34, 0.75);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+
+      .window-top {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 14px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(13, 17, 23, 0.75);
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #ff5f56;
+      }
+
+      .dot:nth-child(2) {
+        background: #ffbd2e;
+      }
+
+      .dot:nth-child(3) {
+        background: #27c93f;
+      }
+
+      .app-preview {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        min-height: 430px;
+      }
+
+      .sidebar {
+        border-right: 1px solid var(--border);
+        padding: 18px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .sidebar-title {
+        color: var(--text);
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+
+      .db-item {
+        padding: 9px 10px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+      }
+
+      .db-item.active {
+        color: var(--primary);
+        background: var(--primary-soft);
+      }
+
+      .editor {
+        padding: 20px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 14px;
+      }
+
+      .tab {
+        display: inline-flex;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(88, 166, 255, 0.1);
+        color: var(--primary);
+        margin-bottom: 18px;
+        font-family: inherit;
+      }
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        color: #c9d1d9;
+      }
+
+      .kw {
+        color: #ff7b72;
+      }
+
+      .fn {
+        color: #d2a8ff;
+      }
+
+      .str {
+        color: #a5d6ff;
+      }
+
+      .num {
+        color: #79c0ff;
+      }
+
+      .features {
+        padding: 40px 0 96px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+
+      .feature-card {
+        border: 1px solid var(--border);
+        background: rgba(22, 27, 34, 0.72);
+        border-radius: 16px;
+        padding: 22px;
+      }
+
+      .feature-card h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .feature-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        padding: 28px 0;
+        font-size: 14px;
+      }
+
+      @media (max-width: 900px) {
+        .hero {
+          grid-template-columns: 1fr;
+          padding-top: 24px;
+        }
+
+        .features {
+          grid-template-columns: 1fr;
+        }
+
+        .nav-links {
+          display: none;
+        }
+
+        .app-preview {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="container nav">
+      <a class="logo" href="#">
+        <span class="logo-icon">pg</span>
+        <span>pg_desk</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="https://github.com/khanhpn/pg_desk">GitHub</a>
+        <a href="#download">Download</a>
+      </nav>
+    </header>
+
+    <main class="container hero">
+      <section>
+        <div class="badge">PostgreSQL desktop client for developers</div>
+
+        <h1>
+          A modern desktop client for
+          <span class="gradient-text">PostgreSQL</span>
+        </h1>
+
+        <p>
+          pg_desk helps developers connect to PostgreSQL, browse databases,
+          write SQL, inspect tables, and work faster with a clean desktop UI.
+        </p>
+
+        <div class="actions" id="download">
+          <a class="btn btn-primary" href="https://github.com/khanhpn/pg_desk">
+            View on GitHub
+          </a>
+          <a
+            class="btn btn-secondary"
+            href="https://github.com/khanhpn/pg_desk/releases"
+          >
+            Download Preview
+          </a>
+        </div>
+
+        <div class="stats">
+          <span><strong>Electron</strong> desktop app</span>
+          <span><strong>PostgreSQL</strong> focused</span>
+          <span><strong>Open source</strong> friendly</span>
+        </div>
+      </section>
+
+      <section class="window" aria-label="pg_desk app preview">
+        <div class="window-top">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+
+        <div class="app-preview">
+          <aside class="sidebar">
+            <div class="sidebar-title">Connections</div>
+            <div class="db-item active">local_pg</div>
+            <div class="db-item">staging</div>
+            <div class="db-item">analytics</div>
+          </aside>
+
+          <div class="editor">
+            <div class="tab">query.sql</div>
+            <pre><code><span class="kw">SELECT</span>
+  users.id,
+  users.email,
+  COUNT(orders.id) <span class="kw">AS</span> total_orders
+<span class="kw">FROM</span> users
+<span class="kw">LEFT JOIN</span> orders
+  <span class="kw">ON</span> orders.user_id = users.id
+<span class="kw">WHERE</span> users.active = <span class="kw">true</span>
+<span class="kw">GROUP BY</span> users.id, users.email
+<span class="kw">ORDER BY</span> total_orders <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">20</span>;</code></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="container features" id="features">
+      <article class="feature-card">
+        <h3>Fast SQL editor</h3>
+        <p>
+          Write, run, and organize SQL queries with a developer-friendly editor.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <h3>Database explorer</h3>
+        <p>
+          Browse schemas, tables, columns, indexes, and relationships quickly.
+        </p>
+      </article>
+
+      <article class="feature-card">
+        <h3>Clean desktop UI</h3>
+        <p>Built for focus, with a modern GitHub/Cursor-like dark interface.</p>
+      </article>
+    </section>
+
+    <footer>
+      <div class="container">
+        © 2026 pg_desk. Built for PostgreSQL developers.
+      </div>
+    </footer>
+  </body>
+</html>
