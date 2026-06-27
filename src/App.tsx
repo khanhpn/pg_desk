@@ -11,15 +11,21 @@ import { Topbar } from "@/components/Topbar";
 import { useConnectionTest } from "@/hooks/useConnectionTest";
 import { useIpcPing } from "@/hooks/useIpcPing";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
+import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
 
 const App = () => {
+  const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
+    useDatabaseExplorer();
+
   const {
     connectionForm,
     connectionMessage,
     isTestingConnection,
     updateConnectionField,
     handleTestConnection,
-  } = useConnectionTest();
+  } = useConnectionTest({
+    onConnected: refreshExplorer,
+  });
 
   const { ipcMessage, handlePing } = useIpcPing();
 
@@ -40,6 +46,10 @@ const App = () => {
         isTestingConnection={isTestingConnection}
         updateConnectionField={updateConnectionField}
         handleTestConnection={handleTestConnection}
+        schemas={schemas}
+        explorerMessage={explorerMessage}
+        isLoadingExplorer={isLoadingExplorer}
+        refreshExplorer={refreshExplorer}
       />
 
       <main className="workspace">

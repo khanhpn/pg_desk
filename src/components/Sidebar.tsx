@@ -1,6 +1,7 @@
 import { ConnectionPanel } from "@/components/ConnectionPanel";
 import { DatabaseExplorer } from "@/components/DatabaseExplorer";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
+import type { PgSchemaInfo } from "@/types/metadata";
 
 type SidebarProps = {
   connectionForm: PgConnectionForm;
@@ -11,6 +12,11 @@ type SidebarProps = {
     value: string | boolean,
   ) => void;
   handleTestConnection: () => Promise<void>;
+
+  schemas: PgSchemaInfo[];
+  explorerMessage: string;
+  isLoadingExplorer: boolean;
+  refreshExplorer: () => Promise<void>;
 };
 
 export const Sidebar = ({
@@ -19,7 +25,11 @@ export const Sidebar = ({
   isTestingConnection,
   updateConnectionField,
   handleTestConnection,
-}: SidebarProps): JSX.Element => {
+  schemas,
+  explorerMessage,
+  isLoadingExplorer,
+  refreshExplorer,
+}: SidebarProps) => {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -52,7 +62,12 @@ export const Sidebar = ({
         handleTestConnection={handleTestConnection}
       />
 
-      <DatabaseExplorer />
+      <DatabaseExplorer
+        schemas={schemas}
+        explorerMessage={explorerMessage}
+        isLoadingExplorer={isLoadingExplorer}
+        refreshExplorer={refreshExplorer}
+      />
     </aside>
   );
 };

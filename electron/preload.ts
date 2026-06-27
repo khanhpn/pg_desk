@@ -27,6 +27,26 @@ type QueryRunResult = {
   command?: string;
 };
 
+type PgRelationType = "table" | "view";
+
+type PgRelationInfo = {
+  schema: string;
+  name: string;
+  type: PgRelationType;
+};
+
+type PgSchemaInfo = {
+  name: string;
+  tables: PgRelationInfo[];
+  views: PgRelationInfo[];
+};
+
+type PgDatabaseExplorerResult = {
+  ok: boolean;
+  message: string;
+  schemas: PgSchemaInfo[];
+};
+
 const pgdeskApi = {
   app: {
     ping: (): Promise<{
@@ -55,6 +75,12 @@ const pgdeskApi = {
   query: {
     run: (sql: string): Promise<QueryRunResult> => {
       return ipcRenderer.invoke("query:run", { sql });
+    },
+  },
+
+  metadata: {
+    explorer: (): Promise<PgDatabaseExplorerResult> => {
+      return ipcRenderer.invoke("metadata:explorer");
     },
   },
 };
