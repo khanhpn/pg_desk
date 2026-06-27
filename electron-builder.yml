@@ -1,0 +1,23 @@
+appId: com.pgdesk.app
+productName: pgdesk
+
+directories:
+  output: dist
+
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
