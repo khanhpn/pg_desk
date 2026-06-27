@@ -15,15 +15,24 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+          run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
 
-      - name: Enable pnpm
-        run: corepack enable
+      - name: Check versions
+        run: |
+          node -v
+          pnpm -v
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -32,7 +41,7 @@ jobs:
         run: pnpm exec electron-builder --mac dmg --publish never
 
       - name: Upload macOS artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: pgdesk-macos
           path: |
@@ -46,15 +55,24 @@ jobs:
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+          run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
 
-      - name: Enable pnpm
-        run: corepack enable
+      - name: Check versions
+        run: |
+          node -v
+          pnpm -v
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -63,7 +81,7 @@ jobs:
         run: pnpm exec electron-builder --win nsis --publish never
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: pgdesk-windows
           path: |
@@ -80,7 +98,7 @@ jobs:
 
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v4
         with:
           path: release-assets
 
