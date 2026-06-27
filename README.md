@@ -1,5 +1,13 @@
 # PgDesk
 
+A modern PostgreSQL desktop client for developers.
+
+🌐 Landing page: https://khanhpn.github.io/pg_desk/
+
+## Preview
+
+![pg_desk preview](docs/assets/pgdesk-preview.png)
+
 A lightweight PostgreSQL desktop client for writing SQL, running queries, and browsing your database.
 
 ![PgDesk screenshot](docs/screenshot.png)

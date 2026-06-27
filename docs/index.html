@@ -350,6 +350,15 @@
         .sidebar {
           display: none;
         }
+
+        .preview-image {
+          width: 100%;
+          display: block;
+          border: 0;
+          object-fit: cover;
+          object-position: top;
+          max-height: 520px;
+        }
       }
     </style>
   </head>
@@ -388,9 +397,9 @@
           </a>
           <a
             class="btn btn-secondary"
-            href="https://github.com/khanhpn/pg_desk/releases"
+            href="https://github.com/YOUR_USERNAME/YOUR_REPO"
           >
-            Download Preview
+            Early preview coming soon
           </a>
         </div>
 
@@ -408,29 +417,11 @@
           <span class="dot"></span>
         </div>
 
-        <div class="app-preview">
-          <aside class="sidebar">
-            <div class="sidebar-title">Connections</div>
-            <div class="db-item active">local_pg</div>
-            <div class="db-item">staging</div>
-            <div class="db-item">analytics</div>
-          </aside>
-
-          <div class="editor">
-            <div class="tab">query.sql</div>
-            <pre><code><span class="kw">SELECT</span>
-  users.id,
-  users.email,
-  COUNT(orders.id) <span class="kw">AS</span> total_orders
-<span class="kw">FROM</span> users
-<span class="kw">LEFT JOIN</span> orders
-  <span class="kw">ON</span> orders.user_id = users.id
-<span class="kw">WHERE</span> users.active = <span class="kw">true</span>
-<span class="kw">GROUP BY</span> users.id, users.email
-<span class="kw">ORDER BY</span> total_orders <span class="kw">DESC</span>
-<span class="kw">LIMIT</span> <span class="num">20</span>;</code></pre>
-          </div>
-        </div>
+        <img
+          class="preview-image"
+          src="./assets/screenshot.png"
+          alt="pg_desk PostgreSQL desktop client preview"
+        />
       </section>
     </main>
 
