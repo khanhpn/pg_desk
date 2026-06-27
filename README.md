@@ -1,30 +1,24 @@
-# React + TypeScript + Vite
+# PgDesk
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight PostgreSQL desktop client for writing SQL, running queries, and browsing your database.
 
-Currently, two official plugins are available:
+![PgDesk screenshot](docs/screenshot.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## Expanding the ESLint configuration
+- **Connection manager** — connect with host, port, database, user, password, and optional SSL
+- **SQL editor** — syntax-highlighted editor for writing and editing queries
+- **Query runner** — execute SQL and view results in a tabbed output panel
+- **Database explorer** — browse schemas and tables after connecting
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+## Supported platforms
 
-- Configure the top-level `parserOptions` property like this:
+| Platform                      | Status    |
+| ----------------------------- | --------- |
+| macOS (Apple Silicon & Intel) | Supported |
+| Windows (x64)                 | Supported |
+| Linux (AppImage)              | Supported |
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: "latest",
-    sourceType: "module",
-    project: ["./tsconfig.json", "./tsconfig.node.json"],
-    tsconfigRootDir: __dirname,
-  },
-};
-```
+## Development
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, available scripts, and project structure.
