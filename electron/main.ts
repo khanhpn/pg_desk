@@ -1,18 +1,16 @@
 import { app, BrowserWindow } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { registerAppIpc } from "@ipc/app-ipc";
+import { registerConnectionIpc } from "@ipc/connection-ipc";
+import { registerQueryIpc } from "@ipc/query-ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
+registerAppIpc();
+registerConnectionIpc();
+registerQueryIpc();
+
 process.env.APP_ROOT = path.join(__dirname, "..");
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
@@ -25,10 +23,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+const iconPath = path.join(process.env.VITE_PUBLIC, "pgdesk.png");
 
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
@@ -64,5 +63,9 @@ app.on("activate", () => {
     createWindow();
   }
 });
+
+if (process.platform === "darwin") {
+  app.dock.setIcon(iconPath);
+}
 
 app.whenReady().then(createWindow);

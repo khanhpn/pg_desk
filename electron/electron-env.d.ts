@@ -1,27 +1,28 @@
-/// <reference types="vite-plugin-electron/electron-env" />
+/// <reference types="vite/client" />
 
-declare namespace NodeJS {
-  interface ProcessEnv {
-    /**
-     * The built directory structure
-     *
-     * ```tree
-     * ├─┬─┬ dist
-     * │ │ └── index.html
-     * │ │
-     * │ ├─┬ dist-electron
-     * │ │ ├── main.js
-     * │ │ └── preload.js
-     * │
-     * ```
-     */
-    APP_ROOT: string;
-    /** /dist/ or /public/ */
-    VITE_PUBLIC: string;
+import type {
+  PgConnectionConfig,
+  PgConnectionTestResult,
+} from "@electron/types/connection";
+
+type PgDeskApi = {
+  app: {
+    ping: () => Promise<{
+      ok: boolean;
+      message: string;
+      timestamp: string;
+    }>;
+  };
+
+  connection: {
+    test: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
+  };
+};
+
+declare global {
+  interface Window {
+    pgdesk: PgDeskApi;
   }
 }
 
-// Used in Renderer process, expose in `preload.ts`
-interface Window {
-  ipcRenderer: import("electron").IpcRenderer;
-}
+export {};

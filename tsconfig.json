@@ -14,6 +14,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@electron/*": ["electron/*"],
+      "@ipc/*": ["electron/ipc/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
