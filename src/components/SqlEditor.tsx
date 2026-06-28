@@ -2,6 +2,7 @@ import { sql as sqlLanguage } from "@codemirror/lang-sql";
 import { EditorView, keymap } from "@codemirror/view";
 import { githubDark } from "@uiw/codemirror-theme-github";
 import CodeMirror from "@uiw/react-codemirror";
+import { useCallback, useMemo } from "react";
 
 type SqlEditorProps = {
   sql: string;
@@ -14,8 +15,8 @@ const pgdeskEditorLayout = EditorView.theme(
     "&": {
       width: "100%",
       height: "100%",
-      backgroundColor: "#0d1117",
-      color: "#c9d1d9",
+      backgroundColor: "var(--editor-bg)",
+      color: "var(--text)",
       fontSize: "13px",
     },
 
@@ -23,13 +24,13 @@ const pgdeskEditorLayout = EditorView.theme(
       overflow: "auto",
       fontFamily: '"SF Mono", Menlo, Monaco, Consolas, monospace',
       lineHeight: "22px",
-      backgroundColor: "#0d1117",
+      backgroundColor: "var(--editor-bg)",
     },
 
     ".cm-content": {
       minHeight: "100%",
       padding: "16px 18px",
-      caretColor: "#ffffff",
+      caretColor: "var(--text)",
     },
 
     ".cm-line": {
@@ -37,9 +38,9 @@ const pgdeskEditorLayout = EditorView.theme(
     },
 
     ".cm-gutters": {
-      backgroundColor: "#0d1117",
-      color: "#6e7681",
-      borderRight: "1px solid #30363d",
+      backgroundColor: "var(--editor-gutter-bg)",
+      color: "var(--text-subtle)",
+      borderRight: "1px solid var(--border)",
     },
 
     ".cm-lineNumbers .cm-gutterElement": {
@@ -48,20 +49,20 @@ const pgdeskEditorLayout = EditorView.theme(
     },
 
     ".cm-activeLine": {
-      backgroundColor: "#161b22",
+      backgroundColor: "var(--editor-active-line)",
     },
 
     ".cm-activeLineGutter": {
-      backgroundColor: "#161b22",
-      color: "#8b949e",
+      backgroundColor: "var(--editor-active-line)",
+      color: "var(--text-muted)",
     },
 
     ".cm-selectionBackground": {
-      backgroundColor: "#264f78 !important",
+      backgroundColor: "var(--editor-selection) !important",
     },
 
     ".cm-cursor": {
-      borderLeftColor: "#c9d1d9",
+      borderLeftColor: "var(--text)",
     },
 
     "&.cm-focused": {
@@ -78,15 +79,26 @@ export const SqlEditor = ({
   setSql,
   handleRunQuery,
 }: SqlEditorProps): JSX.Element => {
-  const runQueryKeymap = keymap.of([
-    {
-      key: "Mod-Enter",
-      run: (): boolean => {
-        void handleRunQuery();
-        return true;
+  const runQueryKeymap = useMemo(() => {
+    return keymap.of([
+      {
+        key: "Mod-Enter",
+        run: (): boolean => {
+          void handleRunQuery();
+          return true;
+        },
       },
+    ]);
+  }, [handleRunQuery]);
+  const extensions = useMemo(() => {
+    return [sqlLanguage(), pgdeskEditorLayout, runQueryKeymap];
+  }, [runQueryKeymap]);
+  const handleEditorChange = useCallback(
+    (value: string): void => {
+      setSql(value);
     },
-  ]);
+    [setSql],
+  );
 
   return (
     <section className="editor-panel">
@@ -104,8 +116,8 @@ export const SqlEditor = ({
           bracketMatching: true,
           closeBrackets: true,
         }}
-        extensions={[sqlLanguage(), pgdeskEditorLayout, runQueryKeymap]}
-        onChange={(value) => setSql(value)}
+        extensions={extensions}
+        onChange={handleEditorChange}
       />
     </section>
   );

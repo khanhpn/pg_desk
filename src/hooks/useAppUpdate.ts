@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { UpdateStatusPayload } from "@/vite-env";
+
+const visibleStatuses = new Set<UpdateStatusPayload["status"]>([
+  "available",
+  "downloading",
+  "downloaded",
+  "error",
+]);
 
 export const useAppUpdate = () => {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload | null>(
@@ -8,7 +15,7 @@ export const useAppUpdate = () => {
 
   const [isUpdateToastVisible, setIsUpdateToastVisible] = useState(false);
 
-  const handleDownloadUpdate = async (): Promise<void> => {
+  const handleDownloadUpdate = useCallback(async (): Promise<void> => {
     setUpdateStatus((current: UpdateStatusPayload | null) => ({
       status: "downloading",
       message: current?.version
@@ -19,20 +26,13 @@ export const useAppUpdate = () => {
     }));
 
     await window.pgdesk.update.download();
-  };
+  }, []);
 
-  const closeUpdateToast = (): void => {
+  const closeUpdateToast = useCallback((): void => {
     setIsUpdateToastVisible(false);
-  };
+  }, []);
 
   useEffect(() => {
-    const visibleStatuses = new Set<UpdateStatusPayload["status"]>([
-      "available",
-      "downloading",
-      "downloaded",
-      "error",
-    ]);
-
     const unsubscribe = window.pgdesk.update.onStatus((payload) => {
       setUpdateStatus(payload);
 

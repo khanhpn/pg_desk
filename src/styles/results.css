@@ -4,7 +4,7 @@
   flex: 0 0 var(--result-panel-height, 260px);
   display: flex;
   flex-direction: column;
-  background: #0d111a;
+  background: var(--surface-0);
 }
 
 .result-tabs {
@@ -13,8 +13,8 @@
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  border-bottom: 1px solid #202938;
-  background: #111827;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-1);
 }
 
 .result-actions {
@@ -30,19 +30,19 @@
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
-  color: #8d98aa;
+  color: var(--text-subtle);
   display: flex;
   align-items: center;
 }
 
 .result-tab.active {
-  background: #1d2a44;
-  color: #f8fafc;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .save-message {
   max-width: 360px;
-  color: #7d8590;
+  color: var(--text-subtle);
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -50,24 +50,24 @@
 }
 
 .save-message.error {
-  color: #f87171;
+  color: var(--danger);
 }
 
 .save-results-button {
   height: 24px;
   padding: 0 10px;
-  border: 1px solid #2a3445;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #151c2b;
-  color: #d6deeb;
+  background: var(--surface-0);
+  color: var(--text);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .save-results-button:hover:not(:disabled) {
-  border-color: #2563eb;
-  background: #1d2a44;
+  border-color: var(--accent);
+  background: var(--surface-2);
 }
 
 .save-results-button:disabled {
@@ -90,21 +90,21 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #151c2b;
-  color: #aebbd0;
+  background: var(--surface-1);
+  color: var(--text-muted);
   font-weight: 600;
   text-align: left;
-  border-bottom: 1px solid #2a3445;
-  border-right: 1px solid #202938;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border-soft);
   padding: 7px 10px;
   white-space: nowrap;
 }
 
 .result-grid td {
-  border-bottom: 1px solid #182133;
-  border-right: 1px solid #182133;
+  border-bottom: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-soft);
   padding: 0;
-  color: #d6deeb;
+  color: var(--text);
   white-space: nowrap;
 }
 
@@ -113,34 +113,34 @@
 }
 
 .result-grid tbody tr:hover {
-  background: #111827;
+  background: rgba(37, 49, 66, 0.52);
 }
 
 .result-grid th:first-child,
 .result-grid td:first-child {
   width: 42px;
-  color: #687386;
+  color: var(--text-faint);
   text-align: right;
-  background: #0c121d;
+  background: var(--editor-gutter-bg);
 }
 
 .null-value {
-  color: #687386;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .editable-cell {
-  background: rgba(13, 17, 26, 0.35);
+  background: rgba(24, 33, 45, 0.34);
 }
 
 .editable-cell:focus-within {
-  background: rgba(29, 42, 68, 0.72);
-  box-shadow: inset 0 0 0 1px #58a6ff;
+  background: rgba(79, 179, 165, 0.12);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .editable-cell.dirty-cell {
-  background: rgba(120, 83, 22, 0.24);
-  box-shadow: inset 0 -1px 0 #d29922;
+  background: var(--warning-soft);
+  box-shadow: inset 0 -1px 0 var(--warning);
 }
 
 .result-cell-input {
@@ -149,7 +149,7 @@
   height: 31px;
   border: 0;
   background: transparent;
-  color: #d6deeb;
+  color: var(--text);
   padding: 0 10px;
   font: inherit;
   outline: none;
@@ -159,18 +159,18 @@
   width: 15px;
   height: 15px;
   margin: 8px 12px;
-  accent-color: #58a6ff;
+  accent-color: var(--accent);
 }
 
 .empty-result {
   padding: 14px;
-  color: #7d8590;
+  color: var(--text-subtle);
   font-size: 12px;
 }
 
 .query-error-message {
   padding: 14px;
-  color: #f87171;
+  color: var(--danger);
   font-size: 12px;
   line-height: 1.5;
   white-space: pre-wrap;

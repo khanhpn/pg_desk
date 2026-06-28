@@ -1,7 +1,7 @@
 .query-toolbar {
   height: 38px;
-  border-bottom: 1px solid #202938;
-  background: #111827;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface-1);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -13,15 +13,15 @@
   padding: 0 11px;
   border: 0;
   border-radius: 7px;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .run-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover);
 }
 
 .run-button:disabled {
@@ -32,22 +32,22 @@
 .toolbar-button {
   height: 24px;
   padding: 0 10px;
-  border: 1px solid #2a3445;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #151c2b;
-  color: #c8d3e1;
+  background: var(--surface-0);
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
 }
 
 .toolbar-button:hover {
-  background: #1b2538;
+  background: var(--surface-2);
 }
 
 .toolbar-separator {
   width: 1px;
   height: 20px;
-  background: #2a3445;
+  background: var(--border);
   margin: 0 4px;
 }
 
@@ -55,23 +55,23 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8d98aa;
+  color: var(--text-subtle);
   font-size: 12px;
 }
 
 .limit-label select {
   height: 24px;
   min-width: 74px;
-  border: 1px solid #2a3445;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #151c2b;
-  color: #d6deeb;
+  background: var(--surface-0);
+  color: var(--text);
   padding: 0 8px;
   font-size: 12px;
 }
 
 .query-meta {
   margin-left: auto;
-  color: #7d8590;
+  color: var(--text-subtle);
   font-size: 11px;
 }

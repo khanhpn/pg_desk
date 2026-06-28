@@ -1,6 +1,7 @@
 import { ConnectionModal } from "@/components/ConnectionModal";
 import { ConnectionSummaryCard } from "@/components/ConnectionSummaryCard";
 import { DatabaseExplorer } from "@/components/DatabaseExplorer";
+import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
 import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
@@ -51,9 +52,13 @@ export const Sidebar = ({
   selectedRelationKey,
   handleOpenRelation,
 }: SidebarProps) => {
-  const sidebarStyle = {
-    "--sidebar-width": `${sidebarWidth}px`,
-  } as CSSProperties;
+  const sidebarStyle = useMemo(
+    () =>
+      ({
+        "--sidebar-width": `${sidebarWidth}px`,
+      }) as CSSProperties,
+    [sidebarWidth],
+  );
 
   return (
     <aside className="sidebar" style={sidebarStyle}>

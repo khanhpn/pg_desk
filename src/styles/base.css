@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   font-family:
     Inter,
     ui-sans-serif,
@@ -7,8 +8,37 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #d6deeb;
-  background: #0b0f17;
+  --app-bg: #181c22;
+  --workspace-bg: #1a2027;
+  --surface-0: #1d232b;
+  --surface-1: #232b34;
+  --surface-2: #2c3642;
+  --surface-3: #354151;
+  --editor-bg: #1f252d;
+  --editor-gutter-bg: #1a2028;
+  --editor-active-line: #29323d;
+  --editor-selection: #2f5c66;
+  --border-soft: #303a46;
+  --border: #3c4857;
+  --border-strong: #506073;
+  --text: #e6ebf2;
+  --text-muted: #b5bfcb;
+  --text-subtle: #8d99a8;
+  --text-faint: #6f7d8d;
+  --accent: #4fb3a5;
+  --accent-hover: #63c7b8;
+  --on-accent: #071513;
+  --accent-soft: rgba(79, 179, 165, 0.17);
+  --accent-strong: #7aa2f7;
+  --success: #73d69a;
+  --success-soft: rgba(115, 214, 154, 0.18);
+  --warning: #d9a75f;
+  --warning-soft: rgba(217, 167, 95, 0.22);
+  --danger: #f07f86;
+  --danger-soft: rgba(240, 127, 134, 0.14);
+  --shadow-deep: rgba(5, 9, 16, 0.42);
+  color: var(--text);
+  background: var(--app-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }

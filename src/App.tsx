@@ -1,18 +1,6 @@
 import { useCallback, useState } from "react";
 import "@/App.css";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import type { PgRelationInfo } from "@/types/metadata";
-
-const clamp = (value: number, min: number, max: number): number => {
-  return Math.min(Math.max(value, min), max);
-};
-
-const SIDEBAR_MIN_WIDTH = 240;
-const SIDEBAR_MAX_WIDTH = 460;
-const SIDEBAR_DEFAULT_WIDTH = 280;
-const RESULT_PANEL_MIN_HEIGHT = 180;
-const RESULT_PANEL_MAX_HEIGHT = 560;
-const RESULT_PANEL_DEFAULT_HEIGHT = 260;
 
 // imports components
 import { QueryToolbar } from "@/components/QueryToolbar";
@@ -28,6 +16,7 @@ import { useConnectionTest } from "@/hooks/useConnectionTest";
 import { useIpcPing } from "@/hooks/useIpcPing";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
 import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
+import { useResizablePanels } from "@/hooks/useResizablePanels";
 
 const App = () => {
   const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
@@ -71,87 +60,24 @@ const App = () => {
   const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
     null,
   );
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
-  const [resultPanelHeight, setResultPanelHeight] = useState(
-    RESULT_PANEL_DEFAULT_HEIGHT,
-  );
-  const [resizeMode, setResizeMode] = useState<"sidebar" | "result" | null>(
-    null,
-  );
+  const {
+    appShellClassName,
+    sidebarWidth,
+    resultPanelHeight,
+    handleSidebarResizeStart,
+    handleResultPanelResizeStart,
+  } = useResizablePanels();
 
-  const handleSidebarResizeStart = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setResizeMode("sidebar");
-
-      const startX = event.clientX;
-      const startWidth = sidebarWidth;
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        setSidebarWidth(
-          clamp(
-            startWidth + moveEvent.clientX - startX,
-            SIDEBAR_MIN_WIDTH,
-            SIDEBAR_MAX_WIDTH,
-          ),
-        );
-      };
-
-      const handlePointerUp = () => {
-        setResizeMode(null);
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerUp);
-      };
-
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
+  const handleSelectRelation = useCallback(
+    async (relation: PgRelationInfo): Promise<void> => {
+      setSelectedRelationKey(`${relation.schema}.${relation.name}`);
+      await handleOpenRelation(relation.schema, relation.name);
     },
-    [sidebarWidth],
+    [handleOpenRelation],
   );
-
-  const handleResultPanelResizeStart = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      setResizeMode("result");
-
-      const startY = event.clientY;
-      const startHeight = resultPanelHeight;
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        setResultPanelHeight(
-          clamp(
-            startHeight + startY - moveEvent.clientY,
-            RESULT_PANEL_MIN_HEIGHT,
-            RESULT_PANEL_MAX_HEIGHT,
-          ),
-        );
-      };
-
-      const handlePointerUp = () => {
-        setResizeMode(null);
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerUp);
-      };
-
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-    },
-    [resultPanelHeight],
-  );
-
-  const handleSelectRelation = async (
-    relation: PgRelationInfo,
-  ): Promise<void> => {
-    setSelectedRelationKey(`${relation.schema}.${relation.name}`);
-    await handleOpenRelation(relation.schema, relation.name);
-  };
 
   return (
-    <div
-      className={
-        resizeMode ? `app-shell is-resizing-${resizeMode}` : "app-shell"
-      }
-    >
+    <div className={appShellClassName}>
       <Sidebar
         sidebarWidth={sidebarWidth}
         connectionForm={connectionForm}

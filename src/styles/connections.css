@@ -1,9 +1,9 @@
 .connection-card {
   margin: 10px 10px 8px;
   padding: 8px 9px;
-  border: 1px solid #1d2430;
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: #101722;
+  background: var(--surface-1);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -17,14 +17,14 @@
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #22c55e;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.65);
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success-soft);
   flex-shrink: 0;
   margin-top: 4px;
 }
 
 .connection-status.off {
-  background: #4b5563;
+  background: var(--text-faint);
   box-shadow: none;
 }
 
@@ -60,7 +60,7 @@
 .connection-meta {
   margin-top: 2px;
   font-size: 10px;
-  color: #7d8590;
+  color: var(--text-subtle);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -68,7 +68,7 @@
 
 .connection-database {
   margin-top: 5px;
-  color: #7d8590;
+  color: var(--text-subtle);
   font-size: 10px;
   word-break: break-word;
 }
@@ -76,42 +76,42 @@
 .connection-edit-button {
   height: 24px;
   padding: 0 10px;
-  border: 1px solid #253044;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: #151c2b;
-  color: #c8d3e1;
+  background: var(--surface-0);
+  color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .connection-edit-button:hover {
-  background: #1b2538;
-  color: #f8fafc;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .disconnect-button {
   margin-top: 8px;
   height: 24px;
   width: 100%;
-  border: 1px solid #3b2730;
+  border: 1px solid rgba(240, 127, 134, 0.32);
   border-radius: 7px;
-  background: #1b1117;
-  color: #fca5a5;
+  background: var(--danger-soft);
+  color: #ffb4b8;
   font-size: 11px;
   cursor: pointer;
 }
 
 .disconnect-button:hover {
-  background: #2a151d;
+  background: rgba(240, 127, 134, 0.2);
 }
 
 .connection-form {
   margin: 0 10px 10px;
   padding: 9px;
-  border: 1px solid #1d2430;
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: #0f1621;
+  background: var(--surface-0);
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -125,22 +125,22 @@
 
 .connection-form label span {
   font-size: 10px;
-  color: #7d8590;
+  color: var(--text-subtle);
 }
 
 .connection-form input {
   height: 24px;
-  border: 1px solid #253044;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #0b111c;
-  color: #d6deeb;
+  background: var(--editor-bg);
+  color: var(--text);
   padding: 0 8px;
   font-size: 12px;
   outline: none;
 }
 
 .connection-form input:focus {
-  border-color: #2563eb;
+  border-color: var(--accent);
 }
 
 .checkbox-row {
@@ -158,15 +158,15 @@
   height: 26px;
   border: 0;
   border-radius: 7px;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .test-connection-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover);
 }
 
 .test-connection-button:disabled {
@@ -177,19 +177,19 @@
 .connection-message {
   font-size: 11px;
   line-height: 1.4;
-  color: #22c55e;
+  color: var(--success);
   word-break: break-word;
 }
 
 .connection-message.error {
-  color: #f87171;
+  color: var(--danger);
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(3, 7, 18, 0.72);
+  background: rgba(8, 12, 20, 0.68);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -197,17 +197,17 @@
 
 .connection-modal {
   width: 420px;
-  border: 1px solid #30363d;
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: #0d1117;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  background: var(--surface-0);
+  box-shadow: 0 24px 80px var(--shadow-deep);
   overflow: hidden;
 }
 
 .modal-header {
   height: 62px;
   padding: 14px 16px;
-  border-bottom: 1px solid #202938;
+  border-bottom: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -216,30 +216,30 @@
 .modal-title {
   font-size: 14px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text);
 }
 
 .modal-subtitle {
   margin-top: 2px;
   font-size: 11px;
-  color: #7d8590;
+  color: var(--text-subtle);
 }
 
 .modal-close-button {
   width: 28px;
   height: 28px;
-  border: 1px solid #253044;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #111827;
-  color: #c8d3e1;
+  background: var(--surface-1);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 18px;
   line-height: 1;
 }
 
 .modal-close-button:hover {
-  background: #1b2538;
-  color: #f8fafc;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .modal-body {
@@ -264,22 +264,22 @@
 .modal-field span,
 .modal-checkbox-row span {
   font-size: 11px;
-  color: #8d98aa;
+  color: var(--text-subtle);
 }
 
 .modal-field input {
   height: 30px;
-  border: 1px solid #253044;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #0b111c;
-  color: #d6deeb;
+  background: var(--editor-bg);
+  color: var(--text);
   padding: 0 9px;
   font-size: 12px;
   outline: none;
 }
 
 .modal-field input:focus {
-  border-color: #58a6ff;
+  border-color: var(--accent);
 }
 
 .modal-checkbox-row {
@@ -295,20 +295,20 @@
 
 .modal-message {
   min-height: 18px;
-  color: #22c55e;
+  color: var(--success);
   font-size: 11px;
   line-height: 1.4;
   word-break: break-word;
 }
 
 .modal-message.error {
-  color: #f87171;
+  color: var(--danger);
 }
 
 .modal-footer {
   height: 54px;
   padding: 10px 16px;
-  border-top: 1px solid #202938;
+  border-top: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -325,24 +325,24 @@
 }
 
 .modal-secondary-button {
-  border: 1px solid #253044;
-  background: #111827;
-  color: #c8d3e1;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-muted);
 }
 
 .modal-secondary-button:hover {
-  background: #1b2538;
+  background: var(--surface-2);
 }
 
 .modal-primary-button {
   border: 0;
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
 .modal-primary-button:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover);
 }
 
 .modal-primary-button:disabled,

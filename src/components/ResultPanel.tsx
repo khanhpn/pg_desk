@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useResultEditing } from "@/hooks/useResultEditing";
 import type { QueryRunResult } from "@electron/types/query";
 import type { CSSProperties } from "react";
 
@@ -9,8 +10,6 @@ type ResultPanelProps = {
   queryMessage: string;
   panelHeight: number;
 };
-
-type DirtyCells = Record<string, unknown>;
 
 const formatCellValue = (value: unknown): string => {
   if (value === null || value === undefined) {
@@ -36,21 +35,6 @@ const formatEditableValue = (value: unknown): string => {
   return formatCellValue(value);
 };
 
-const buildCellKey = (rowIndex: number, column: string): string => {
-  return `${rowIndex}:${column}`;
-};
-
-const parseCellKey = (
-  cellKey: string,
-): { rowIndex: number; column: string } => {
-  const separatorIndex = cellKey.indexOf(":");
-
-  return {
-    rowIndex: Number(cellKey.slice(0, separatorIndex)),
-    column: cellKey.slice(separatorIndex + 1),
-  };
-};
-
 export const ResultPanel = ({
   queryResult,
   queryMessage,
@@ -58,148 +42,39 @@ export const ResultPanel = ({
 }: ResultPanelProps): JSX.Element => {
   const hasRows = Boolean(queryResult?.rows.length);
   const hasColumns = Boolean(queryResult?.columns.length);
-  const [draftRows, setDraftRows] = useState<Record<string, unknown>[]>([]);
-  const [dirtyCells, setDirtyCells] = useState<DirtyCells>({});
-  const [saveMessage, setSaveMessage] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const resultPanelStyle = {
-    "--result-panel-height": `${panelHeight}px`,
-  } as CSSProperties;
-  const dirtyCellCount = Object.keys(dirtyCells).length;
-  const hasDirtyCells = dirtyCellCount > 0;
-
-  const columnMetadataByName = useMemo(() => {
-    const metadata = new Map(
-      queryResult?.columnMetadata.map((column) => [column.name, column]) ?? [],
-    );
-
-    return metadata;
-  }, [queryResult]);
-
-  useEffect(() => {
-    setDraftRows(queryResult?.rows.map((row) => ({ ...row })) ?? []);
-    setDirtyCells({});
-    setSaveMessage("");
-  }, [queryResult]);
-
-  const updateDraftCell = (
-    rowIndex: number,
-    column: string,
-    value: unknown,
-  ): void => {
-    setDraftRows((currentRows) => {
-      return currentRows.map((row, currentRowIndex) => {
-        if (currentRowIndex !== rowIndex) {
-          return row;
-        }
-
-        return {
-          ...row,
-          [column]: value,
-        };
-      });
-    });
-
-    setDirtyCells((currentDirtyCells) => ({
-      ...currentDirtyCells,
-      [buildCellKey(rowIndex, column)]: value,
-    }));
-    setSaveMessage("");
-  };
-
-  const buildPrimaryKeys = useCallback(
-    (
-      row: Record<string, unknown>,
-      tableOid: number,
-    ): Array<{ columnName: string; value: unknown }> => {
-      return (
-        queryResult?.columnMetadata
-          .filter((column) => {
-            return column.tableOid === tableOid && column.isPrimaryKey;
-          })
-          .map((column) => ({
-            columnName: column.columnName ?? column.name,
-            value: row[column.name],
-          })) ?? []
-      );
-    },
-    [queryResult?.columnMetadata],
-  );
-
-  const saveChanges = useCallback(async (): Promise<void> => {
-    if (!queryResult || !hasDirtyCells || isSaving) {
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveMessage("Saving changes...");
-
-    try {
-      for (const cellKey of Object.keys(dirtyCells)) {
-        const { rowIndex, column } = parseCellKey(cellKey);
-        const columnMetadata = columnMetadataByName.get(column);
-        const row = draftRows[rowIndex];
-
-        if (!row || !columnMetadata?.isEditable || !columnMetadata.columnName) {
-          throw new Error("This cell cannot be saved");
-        }
-
-        const result = await window.pgdesk.query.updateCell({
-          tableOid: columnMetadata.tableOid,
-          columnName: columnMetadata.columnName,
-          primaryKeys: buildPrimaryKeys(row, columnMetadata.tableOid),
-          value: row[column],
-        });
-
-        if (!result.ok) {
-          throw new Error(result.message);
-        }
-      }
-
-      setDirtyCells({});
-      setSaveMessage(
-        `Saved ${dirtyCellCount} change${dirtyCellCount === 1 ? "" : "s"}`,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setSaveMessage(`Error: ${message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    buildPrimaryKeys,
+  const {
+    draftRows,
     columnMetadataByName,
     dirtyCellCount,
-    dirtyCells,
-    draftRows,
     hasDirtyCells,
     isSaving,
-    queryResult,
-  ]);
+    saveMessage,
+    isCellDirty,
+    updateDraftCell,
+    saveChanges,
+  } = useResultEditing(queryResult);
+  const resultPanelStyle = useMemo(
+    () =>
+      ({
+        "--result-panel-height": `${panelHeight}px`,
+      }) as CSSProperties,
+    [panelHeight],
+  );
+  const saveMessageClassName = useMemo(() => {
+    return saveMessage.startsWith("Error")
+      ? "save-message error"
+      : "save-message";
+  }, [saveMessage]);
+  const saveButtonLabel = useMemo(() => {
+    if (isSaving) {
+      return "Saving...";
+    }
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (
-        !(event.metaKey || event.ctrlKey) ||
-        event.key.toLowerCase() !== "s"
-      ) {
-        return;
-      }
-
-      if (!hasDirtyCells) {
-        return;
-      }
-
-      event.preventDefault();
-      void saveChanges();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [hasDirtyCells, saveChanges]);
+    return `Save${hasDirtyCells ? ` (${dirtyCellCount})` : ""}`;
+  }, [dirtyCellCount, hasDirtyCells, isSaving]);
+  const handleSaveClick = useCallback((): void => {
+    void saveChanges();
+  }, [saveChanges]);
 
   return (
     <section className="result-panel" style={resultPanelStyle}>
@@ -209,13 +84,7 @@ export const ResultPanel = ({
         <div className="result-tab">History</div>
 
         <div className="result-actions">
-          <span
-            className={
-              saveMessage.startsWith("Error")
-                ? "save-message error"
-                : "save-message"
-            }
-          >
+          <span className={saveMessageClassName}>
             {saveMessage || queryResult?.editMessage}
           </span>
 
@@ -223,13 +92,9 @@ export const ResultPanel = ({
             className="save-results-button"
             type="button"
             disabled={!hasDirtyCells || isSaving}
-            onClick={() => {
-              void saveChanges();
-            }}
+            onClick={handleSaveClick}
           >
-            {isSaving
-              ? "Saving..."
-              : `Save${hasDirtyCells ? ` (${dirtyCellCount})` : ""}`}
+            {saveButtonLabel}
           </button>
         </div>
       </div>
@@ -272,8 +137,7 @@ export const ResultPanel = ({
                       columnMetadata?.dataTypeId === BOOLEAN_DATA_TYPE_ID ||
                       typeof value === "boolean";
                     const isEditable = Boolean(columnMetadata?.isEditable);
-                    const cellKey = buildCellKey(rowIndex, column);
-                    const isDirty = cellKey in dirtyCells;
+                    const isDirty = isCellDirty(rowIndex, column);
 
                     return (
                       <td

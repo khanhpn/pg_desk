@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import type { PgConnectionForm } from "@/types/connection";
 
 type ConnectionSummaryCardProps = {
@@ -17,13 +18,28 @@ export const ConnectionSummaryCard = ({
   openConnectionModal,
   handleDisconnect,
 }: ConnectionSummaryCardProps) => {
-  const title = isConnected
-    ? "Connected"
-    : hasSavedProfile
-      ? `${connectionForm.user}@${connectionForm.host}`
-      : "Not connected";
+  const title = useMemo(() => {
+    if (isConnected) {
+      return "Connected";
+    }
 
-  const actionText = isConnected ? "Edit" : "Connect";
+    if (hasSavedProfile) {
+      return `${connectionForm.user}@${connectionForm.host}`;
+    }
+
+    return "Not connected";
+  }, [connectionForm.host, connectionForm.user, hasSavedProfile, isConnected]);
+  const actionText = useMemo(() => {
+    return isConnected ? "Edit" : "Connect";
+  }, [isConnected]);
+  const connectionMessageClassName = useMemo(() => {
+    return connectionMessage.startsWith("Error")
+      ? "connection-message error"
+      : "connection-message";
+  }, [connectionMessage]);
+  const handleDisconnectClick = useCallback((): void => {
+    void handleDisconnect();
+  }, [handleDisconnect]);
 
   return (
     <div className="connection-card connection-summary-card">
@@ -53,24 +69,14 @@ export const ConnectionSummaryCard = ({
         </div>
 
         {connectionMessage && (
-          <div
-            className={
-              connectionMessage.startsWith("Error")
-                ? "connection-message error"
-                : "connection-message"
-            }
-          >
-            {connectionMessage}
-          </div>
+          <div className={connectionMessageClassName}>{connectionMessage}</div>
         )}
 
         {isConnected && (
           <button
             className="disconnect-button"
             type="button"
-            onClick={() => {
-              void handleDisconnect();
-            }}
+            onClick={handleDisconnectClick}
           >
             Disconnect
           </button>

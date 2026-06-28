@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useCallback } from "react";
+import { useDatabaseTreeState } from "@/hooks/useDatabaseTreeState";
 import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
 type DatabaseExplorerProps = {
@@ -14,10 +15,6 @@ const buildRelationKey = (relation: PgRelationInfo): string => {
   return `${relation.schema}.${relation.name}`;
 };
 
-const buildGroupKey = (schemaName: string, group: "tables" | "views") => {
-  return `${schemaName}.${group}`;
-};
-
 export const DatabaseExplorer = ({
   schemas,
   explorerMessage,
@@ -26,42 +23,11 @@ export const DatabaseExplorer = ({
   selectedRelationKey,
   handleOpenRelation,
 }: DatabaseExplorerProps) => {
-  const [collapsedSchemas, setCollapsedSchemas] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  const toggleSchema = (schemaName: string) => {
-    setCollapsedSchemas((current) => {
-      const next = new Set(current);
-
-      if (next.has(schemaName)) {
-        next.delete(schemaName);
-      } else {
-        next.add(schemaName);
-      }
-
-      return next;
-    });
-  };
-
-  const toggleGroup = (schemaName: string, group: "tables" | "views") => {
-    const groupKey = buildGroupKey(schemaName, group);
-
-    setCollapsedGroups((current) => {
-      const next = new Set(current);
-
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
-      } else {
-        next.add(groupKey);
-      }
-
-      return next;
-    });
-  };
+  const { isSchemaExpanded, isGroupExpanded, toggleSchema, toggleGroup } =
+    useDatabaseTreeState();
+  const handleRefreshExplorer = useCallback((): void => {
+    void refreshExplorer();
+  }, [refreshExplorer]);
 
   return (
     <div className="tree">
@@ -72,9 +38,7 @@ export const DatabaseExplorer = ({
           className="tree-refresh-button"
           type="button"
           disabled={isLoadingExplorer}
-          onClick={() => {
-            void refreshExplorer();
-          }}
+          onClick={handleRefreshExplorer}
         >
           {isLoadingExplorer ? "…" : "↻"}
         </button>
@@ -83,20 +47,16 @@ export const DatabaseExplorer = ({
       <div className="tree-message">{explorerMessage}</div>
 
       {schemas.map((schema) => {
-        const isSchemaExpanded = !collapsedSchemas.has(schema.name);
-        const areTablesExpanded = !collapsedGroups.has(
-          buildGroupKey(schema.name, "tables"),
-        );
-        const areViewsExpanded = !collapsedGroups.has(
-          buildGroupKey(schema.name, "views"),
-        );
+        const schemaExpanded = isSchemaExpanded(schema.name);
+        const tablesExpanded = isGroupExpanded(schema.name, "tables");
+        const viewsExpanded = isGroupExpanded(schema.name, "views");
 
         return (
           <div className="tree-schema" key={schema.name}>
             <button
               className="tree-item schema tree-button tree-toggle"
               type="button"
-              aria-expanded={isSchemaExpanded}
+              aria-expanded={schemaExpanded}
               onClick={() => {
                 toggleSchema(schema.name);
               }}
@@ -109,12 +69,12 @@ export const DatabaseExplorer = ({
               </span>
             </button>
 
-            {isSchemaExpanded && (
+            {schemaExpanded && (
               <div className="tree-indent">
                 <button
                   className="tree-label tree-label-button"
                   type="button"
-                  aria-expanded={areTablesExpanded}
+                  aria-expanded={tablesExpanded}
                   onClick={() => {
                     toggleGroup(schema.name, "tables");
                   }}
@@ -125,7 +85,7 @@ export const DatabaseExplorer = ({
                   <span className="tree-count">{schema.tables.length}</span>
                 </button>
 
-                {areTablesExpanded && (
+                {tablesExpanded && (
                   <div className="tree-group">
                     {schema.tables.length === 0 && (
                       <div className="tree-empty">No tables</div>
@@ -159,7 +119,7 @@ export const DatabaseExplorer = ({
                 <button
                   className="tree-label tree-label-button"
                   type="button"
-                  aria-expanded={areViewsExpanded}
+                  aria-expanded={viewsExpanded}
                   onClick={() => {
                     toggleGroup(schema.name, "views");
                   }}
@@ -170,7 +130,7 @@ export const DatabaseExplorer = ({
                   <span className="tree-count">{schema.views.length}</span>
                 </button>
 
-                {areViewsExpanded && (
+                {viewsExpanded && (
                   <div className="tree-group">
                     {schema.views.length === 0 && (
                       <div className="tree-empty">No views</div>

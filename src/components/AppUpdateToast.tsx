@@ -1,4 +1,5 @@
-import { UpdateStatusPayload } from "@/vite-env";
+import { useCallback, useMemo } from "react";
+import type { UpdateStatusPayload } from "@/vite-env";
 
 type AppUpdateToastProps = {
   updateStatus: UpdateStatusPayload | null;
@@ -13,14 +14,25 @@ export const AppUpdateToast = ({
   handleDownloadUpdate,
   closeUpdateToast,
 }: AppUpdateToastProps) => {
+  const { isAvailable, isDownloading, isDownloaded, isError } = useMemo(
+    () => ({
+      isAvailable: updateStatus?.status === "available",
+      isDownloading: updateStatus?.status === "downloading",
+      isDownloaded: updateStatus?.status === "downloaded",
+      isError: updateStatus?.status === "error",
+    }),
+    [updateStatus?.status],
+  );
+  const progressWidth = useMemo(() => {
+    return `${Math.round(updateStatus?.percent ?? 0)}%`;
+  }, [updateStatus?.percent]);
+  const handleDownloadClick = useCallback((): void => {
+    void handleDownloadUpdate();
+  }, [handleDownloadUpdate]);
+
   if (!isVisible || !updateStatus) {
     return null;
   }
-
-  const isAvailable = updateStatus.status === "available";
-  const isDownloading = updateStatus.status === "downloading";
-  const isDownloaded = updateStatus.status === "downloaded";
-  const isError = updateStatus.status === "error";
 
   return (
     <div className="update-toast">
@@ -49,7 +61,7 @@ export const AppUpdateToast = ({
           <div
             className="update-progress-bar"
             style={{
-              width: `${Math.round(updateStatus.percent ?? 0)}%`,
+              width: progressWidth,
             }}
           />
         </div>
@@ -60,9 +72,7 @@ export const AppUpdateToast = ({
           <button
             className="update-primary-button"
             type="button"
-            onClick={() => {
-              void handleDownloadUpdate();
-            }}
+            onClick={handleDownloadClick}
           >
             Update now
           </button>

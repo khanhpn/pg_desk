@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
 
 type UseConnectionTestOptions = {
@@ -27,17 +27,17 @@ export const useConnectionTest = ({
   const [hasSavedProfile, setHasSavedProfile] = useState(false);
   const [isConnectionModalOpen, setIsConnectionModalOpen] = useState(false);
 
-  const updateConnectionField = (
-    field: PgConnectionField,
-    value: string | boolean,
-  ): void => {
-    setConnectionForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  };
+  const updateConnectionField = useCallback(
+    (field: PgConnectionField, value: string | boolean): void => {
+      setConnectionForm((current) => ({
+        ...current,
+        [field]: value,
+      }));
+    },
+    [],
+  );
 
-  const loadSavedProfile = async (): Promise<void> => {
+  const loadSavedProfile = useCallback(async (): Promise<void> => {
     try {
       const profile = await window.pgdesk.connection.getProfile();
 
@@ -62,21 +62,21 @@ export const useConnectionTest = ({
       const message = error instanceof Error ? error.message : String(error);
       setConnectionMessage(`Error loading profile: ${message}`);
     }
-  };
+  }, []);
 
-  const openConnectionModal = (): void => {
+  const openConnectionModal = useCallback((): void => {
     setIsConnectionModalOpen(true);
-  };
+  }, []);
 
-  const closeConnectionModal = (): void => {
+  const closeConnectionModal = useCallback((): void => {
     if (isTestingConnection) {
       return;
     }
 
     setIsConnectionModalOpen(false);
-  };
+  }, [isTestingConnection]);
 
-  const handleConnect = async (): Promise<void> => {
+  const handleConnect = useCallback(async (): Promise<void> => {
     setIsTestingConnection(true);
     setConnectionMessage("Connecting...");
 
@@ -112,9 +112,9 @@ export const useConnectionTest = ({
     } finally {
       setIsTestingConnection(false);
     }
-  };
+  }, [connectionForm, onConnected]);
 
-  const handleDisconnect = async (): Promise<void> => {
+  const handleDisconnect = useCallback(async (): Promise<void> => {
     try {
       await window.pgdesk.connection.disconnect();
 
@@ -124,11 +124,11 @@ export const useConnectionTest = ({
       const message = error instanceof Error ? error.message : String(error);
       setConnectionMessage(`Error disconnecting: ${message}`);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadSavedProfile();
-  }, []);
+  }, [loadSavedProfile]);
 
   return {
     connectionForm,

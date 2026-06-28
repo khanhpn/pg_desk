@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { buildSelectRelationSql } from "@/utils/sql";
 import type { QueryRunResult } from "@electron/types/query";
 
@@ -12,7 +12,7 @@ export const useSqlQuery = () => {
   const [queryMessage, setQueryMessage] = useState("Ready");
   const [isRunningQuery, setIsRunningQuery] = useState(false);
 
-  const runSqlText = async (nextSql: string): Promise<void> => {
+  const runSqlText = useCallback(async (nextSql: string): Promise<void> => {
     setIsRunningQuery(true);
     setQueryMessage("Running query...");
 
@@ -35,21 +35,21 @@ export const useSqlQuery = () => {
     } finally {
       setIsRunningQuery(false);
     }
-  };
+  }, []);
 
-  const handleRunQuery = async (): Promise<void> => {
+  const handleRunQuery = useCallback(async (): Promise<void> => {
     await runSqlText(sql);
-  };
+  }, [runSqlText, sql]);
 
-  const handleOpenRelation = async (
-    schema: string,
-    relation: string,
-  ): Promise<void> => {
-    const nextSql = buildSelectRelationSql(schema, relation, 100);
+  const handleOpenRelation = useCallback(
+    async (schema: string, relation: string): Promise<void> => {
+      const nextSql = buildSelectRelationSql(schema, relation, 100);
 
-    setSql(nextSql);
-    await runSqlText(nextSql);
-  };
+      setSql(nextSql);
+      await runSqlText(nextSql);
+    },
+    [runSqlText],
+  );
 
   return {
     sql,

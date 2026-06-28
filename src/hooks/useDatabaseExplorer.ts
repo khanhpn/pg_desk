@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { PgSchemaInfo } from "@/types/metadata";
 
 export const useDatabaseExplorer = () => {
@@ -6,7 +6,7 @@ export const useDatabaseExplorer = () => {
   const [explorerMessage, setExplorerMessage] = useState("Not loaded");
   const [isLoadingExplorer, setIsLoadingExplorer] = useState(false);
 
-  const refreshExplorer = async (): Promise<void> => {
+  const refreshExplorer = useCallback(async (): Promise<void> => {
     setIsLoadingExplorer(true);
     setExplorerMessage("Loading explorer...");
 
@@ -29,7 +29,7 @@ export const useDatabaseExplorer = () => {
     } finally {
       setIsLoadingExplorer(false);
     }
-  };
+  }, []);
 
   return {
     schemas,
