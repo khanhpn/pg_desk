@@ -8,6 +8,8 @@ import { ResultPanel } from "@/components/ResultPanel";
 import { Sidebar } from "@/components/Sidebar";
 import { SqlEditor } from "@/components/SqlEditor";
 import { Topbar } from "@/components/Topbar";
+import { AppUpdateToast } from "@/components/AppUpdateToast";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 // imports hooks
 import { useConnectionTest } from "@/hooks/useConnectionTest";
@@ -46,6 +48,13 @@ const App = () => {
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery();
+
+  const {
+    updateStatus,
+    isUpdateToastVisible,
+    handleDownloadUpdate,
+    closeUpdateToast,
+  } = useAppUpdate();
 
   const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
     null,
@@ -93,6 +102,13 @@ const App = () => {
 
         <ResultPanel queryResult={queryResult} queryMessage={queryMessage} />
       </main>
+
+      <AppUpdateToast
+        updateStatus={updateStatus}
+        isVisible={isUpdateToastVisible}
+        handleDownloadUpdate={handleDownloadUpdate}
+        closeUpdateToast={closeUpdateToast}
+      />
     </div>
   );
 };
