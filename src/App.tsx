@@ -8,6 +8,8 @@ import { ResultPanel } from "@/components/ResultPanel";
 import { Sidebar } from "@/components/Sidebar";
 import { SqlEditor } from "@/components/SqlEditor";
 import { Topbar } from "@/components/Topbar";
+import { AppUpdateToast } from "@/components/AppUpdateToast";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 // imports hooks
 import { useConnectionTest } from "@/hooks/useConnectionTest";
@@ -23,8 +25,14 @@ const App = () => {
     connectionForm,
     connectionMessage,
     isTestingConnection,
+    isConnected,
+    isConnectionModalOpen,
     updateConnectionField,
-    handleTestConnection,
+    openConnectionModal,
+    closeConnectionModal,
+    handleConnect,
+    handleDisconnect,
+    hasSavedProfile,
   } = useConnectionTest({
     onConnected: refreshExplorer,
   });
@@ -40,6 +48,13 @@ const App = () => {
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery();
+
+  const {
+    updateStatus,
+    isUpdateToastVisible,
+    handleDownloadUpdate,
+    closeUpdateToast,
+  } = useAppUpdate();
 
   const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
     null,
@@ -58,8 +73,14 @@ const App = () => {
         connectionForm={connectionForm}
         connectionMessage={connectionMessage}
         isTestingConnection={isTestingConnection}
+        isConnected={isConnected}
+        isConnectionModalOpen={isConnectionModalOpen}
+        hasSavedProfile={hasSavedProfile}
         updateConnectionField={updateConnectionField}
-        handleTestConnection={handleTestConnection}
+        openConnectionModal={openConnectionModal}
+        closeConnectionModal={closeConnectionModal}
+        handleConnect={handleConnect}
+        handleDisconnect={handleDisconnect}
         schemas={schemas}
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}
@@ -81,6 +102,13 @@ const App = () => {
 
         <ResultPanel queryResult={queryResult} queryMessage={queryMessage} />
       </main>
+
+      <AppUpdateToast
+        updateStatus={updateStatus}
+        isVisible={isUpdateToastVisible}
+        handleDownloadUpdate={handleDownloadUpdate}
+        closeUpdateToast={closeUpdateToast}
+      />
     </div>
   );
 };

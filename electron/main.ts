@@ -5,6 +5,11 @@ import { registerAppIpc } from "@ipc/app-ipc";
 import { registerConnectionIpc } from "@ipc/connection-ipc";
 import { registerQueryIpc } from "@ipc/query-ipc";
 import { registerMetadataIpc } from "@electron/ipc/metadata-ipc";
+import {
+  checkForAppUpdates,
+  registerAppUpdater,
+} from "@electron/services/app-update-service";
+import { registerUpdateIpc } from "@electron/ipc/update-ipc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -12,6 +17,7 @@ registerAppIpc();
 registerConnectionIpc();
 registerQueryIpc();
 registerMetadataIpc();
+registerUpdateIpc();
 
 process.env.APP_ROOT = path.join(__dirname, "..");
 
@@ -34,6 +40,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.mjs"),
     },
   });
+
+  registerAppUpdater(win);
 
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
@@ -63,6 +71,9 @@ app.on("activate", () => {
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+    setTimeout(() => {
+      void checkForAppUpdates();
+    }, 2500);
   }
 });
 

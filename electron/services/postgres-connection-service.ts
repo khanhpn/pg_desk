@@ -1,11 +1,18 @@
 import { createRequire } from "node:module";
 import type { Pool as PgPool, PoolClient } from "pg";
+
+// import types
 import type {
   PgConnectionConfig,
   PgConnectionTestResult,
 } from "@electron/types/connection";
 import type { QueryRunPayload, QueryRunResult } from "@electron/types/query";
+
+// import utils
 import { getErrorMessage } from "@electron/utils/error";
+
+// import services
+import { saveConnectionProfile } from "@electron/services/connection-profile-service";
 
 const require = createRequire(import.meta.url);
 const { Pool } = require("pg") as typeof import("pg");
@@ -131,6 +138,7 @@ export const connectPostgres = async (
     }
 
     activePool = nextPool;
+    await saveConnectionProfile(config);
 
     return connectionInfo;
   } catch (error) {

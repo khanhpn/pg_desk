@@ -47,6 +47,20 @@ type PgDatabaseExplorerResult = {
   schemas: PgSchemaInfo[];
 };
 
+type UpdateStatusPayload = {
+  status:
+    | "idle"
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error";
+  message: string;
+  version?: string;
+  percent?: number;
+};
+
 const pgdeskApi = {
   app: {
     ping: (): Promise<{
@@ -70,6 +84,10 @@ const pgdeskApi = {
     disconnect: (): Promise<{ ok: boolean; message: string }> => {
       return ipcRenderer.invoke("connection:disconnect");
     },
+
+    getProfile: (): Promise<PgConnectionConfig | null> => {
+      return ipcRenderer.invoke("connection:profile:get");
+    },
   },
 
   query: {
@@ -81,6 +99,33 @@ const pgdeskApi = {
   metadata: {
     explorer: (): Promise<PgDatabaseExplorerResult> => {
       return ipcRenderer.invoke("metadata:explorer");
+    },
+  },
+
+  update: {
+    check: (): Promise<{ ok: boolean }> => {
+      return ipcRenderer.invoke("update:check");
+    },
+
+    download: (): Promise<{ ok: boolean }> => {
+      return ipcRenderer.invoke("update:download");
+    },
+
+    onStatus: (
+      callback: (payload: UpdateStatusPayload) => void,
+    ): (() => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: UpdateStatusPayload,
+      ): void => {
+        callback(payload);
+      };
+
+      ipcRenderer.on("update:status", listener);
+
+      return () => {
+        ipcRenderer.removeListener("update:status", listener);
+      };
     },
   },
 };

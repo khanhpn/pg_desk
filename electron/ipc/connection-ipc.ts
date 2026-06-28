@@ -5,6 +5,7 @@ import {
   testPostgresConnection,
 } from "@electron/services/postgres-connection-service";
 import type { PgConnectionConfig } from "@electron/types/connection";
+import { loadConnectionProfile } from "@electron/services/connection-profile-service";
 
 export const registerConnectionIpc = (): void => {
   ipcMain.handle(
@@ -28,5 +29,9 @@ export const registerConnectionIpc = (): void => {
       ok: true,
       message: "Disconnected",
     };
+  });
+
+  ipcMain.handle("connection:profile:get", async () => {
+    return loadConnectionProfile();
   });
 };

@@ -1,0 +1,197 @@
+.sidebar {
+  width: 236px;
+  min-width: 236px;
+  height: 100%;
+  border-right: 1px solid #1d2430;
+  background: #0c1118;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  height: 56px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #1d2430;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-title {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.15px;
+}
+
+.app-subtitle {
+  margin-top: 1px;
+  font-size: 10px;
+  color: #6f7b8f;
+}
+
+.icon-button {
+  border: 1px solid #253044;
+  background: #101722;
+  color: #d6deeb;
+  border-radius: 6px;
+  height: 24px;
+  min-width: 24px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: #162131;
+}
+
+.tree {
+  padding: 4px 6px 14px;
+  overflow: auto;
+  font-size: 12px;
+}
+
+.tree-section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.tree-section {
+  padding: 8px 8px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #667387;
+  letter-spacing: 0.08em;
+}
+
+.tree-refresh-button {
+  width: 24px;
+  height: 22px;
+  border: 1px solid #253044;
+  border-radius: 6px;
+  background: #101722;
+  color: #8d98aa;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tree-refresh-button:hover {
+  color: #d6deeb;
+  background: #162131;
+}
+
+.tree-refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tree-message {
+  padding: 0 8px 8px;
+  color: #667387;
+  font-size: 10px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.tree-item {
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #c8d3e1;
+  cursor: default;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-item:hover {
+  background: #131b28;
+}
+
+.tree-item.active {
+  background: #1a2740;
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tree-item.schema {
+  font-size: 13px;
+  font-weight: 550;
+  color: #d7e0ee;
+}
+
+.tree-item.table {
+  color: #aebbd0;
+}
+
+.tree-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+
+.tree-button:hover {
+  background: #131b28;
+}
+
+.tree-button.selected {
+  background: #1d2a44;
+  color: #f8fafc;
+}
+
+.tree-button.selected .tree-dot {
+  background: #58a6ff;
+}
+
+.tree-button.selected .tree-dot.view {
+  background: #8b949e;
+}
+
+.database-node {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.tree-indent {
+  margin-left: 12px;
+}
+
+.tree-label {
+  padding: 7px 8px 3px;
+  font-size: 10px;
+  color: #667387;
+  text-transform: lowercase;
+}
+
+.tree-caret {
+  width: 12px;
+  color: #7f8ba3;
+  font-size: 12px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tree-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #4b5563;
+  flex-shrink: 0;
+}
+
+.tree-dot.view {
+  background: #64748b;
+}
+
+.tree-empty {
+  height: 22px;
+  padding: 4px 8px 4px 26px;
+  color: #536074;
+  font-size: 11px;
+}

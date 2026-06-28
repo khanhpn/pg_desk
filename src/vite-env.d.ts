@@ -47,6 +47,20 @@ type PgDatabaseExplorerResult = {
   schemas: PgSchemaInfo[];
 };
 
+type UpdateStatusPayload = {
+  status:
+    | "idle"
+    | "checking"
+    | "available"
+    | "not-available"
+    | "downloading"
+    | "downloaded"
+    | "error";
+  message: string;
+  version?: string;
+  percent?: number;
+};
+
 type PgDeskApi = {
   app: {
     ping: () => Promise<{
@@ -60,6 +74,7 @@ type PgDeskApi = {
     test: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
     connect: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
     disconnect: () => Promise<{ ok: boolean; message: string }>;
+    getProfile: () => Promise<PgConnectionConfig | null>;
   };
 
   query: {
@@ -69,6 +84,12 @@ type PgDeskApi = {
   metadata: {
     explorer: () => Promise<PgDatabaseExplorerResult>;
   };
+
+  update: {
+    check: () => Promise<{ ok: boolean }>;
+    download: () => Promise<{ ok: boolean }>;
+    onStatus: (callback: (payload: UpdateStatusPayload) => void) => () => void;
+  };
 };
 
 declare global {
@@ -77,4 +98,4 @@ declare global {
   }
 }
 
-export {};
+export { type UpdateStatusPayload };
