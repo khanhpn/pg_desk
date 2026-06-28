@@ -1,17 +1,24 @@
-import { ConnectionPanel } from "@/components/ConnectionPanel";
+import { ConnectionModal } from "@/components/ConnectionModal";
+import { ConnectionSummaryCard } from "@/components/ConnectionSummaryCard";
 import { DatabaseExplorer } from "@/components/DatabaseExplorer";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
-import type { PgSchemaInfo, PgRelationInfo } from "@/types/metadata";
+import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
 type SidebarProps = {
   connectionForm: PgConnectionForm;
   connectionMessage: string;
   isTestingConnection: boolean;
+  isConnected: boolean;
+  isConnectionModalOpen: boolean;
+  hasSavedProfile: boolean;
   updateConnectionField: (
     field: PgConnectionField,
     value: string | boolean,
   ) => void;
-  handleTestConnection: () => Promise<void>;
+  openConnectionModal: () => void;
+  closeConnectionModal: () => void;
+  handleConnect: () => Promise<void>;
+  handleDisconnect: () => Promise<void>;
 
   schemas: PgSchemaInfo[];
   explorerMessage: string;
@@ -25,8 +32,15 @@ export const Sidebar = ({
   connectionForm,
   connectionMessage,
   isTestingConnection,
+  isConnected,
+  isConnectionModalOpen,
+  hasSavedProfile,
   updateConnectionField,
-  handleTestConnection,
+  openConnectionModal,
+  closeConnectionModal,
+  handleConnect,
+  handleDisconnect,
+
   schemas,
   explorerMessage,
   isLoadingExplorer,
@@ -42,28 +56,22 @@ export const Sidebar = ({
           <div className="app-subtitle">PostgreSQL Client</div>
         </div>
 
-        <button className="icon-button" type="button">
+        <button
+          className="icon-button"
+          type="button"
+          onClick={openConnectionModal}
+        >
           +
         </button>
       </div>
 
-      <div className="connection-card">
-        <div className="connection-status" />
-
-        <div>
-          <div className="connection-name">local / postgres</div>
-          <div className="connection-meta">
-            {connectionForm.host}:{connectionForm.port}
-          </div>
-        </div>
-      </div>
-
-      <ConnectionPanel
+      <ConnectionSummaryCard
         connectionForm={connectionForm}
         connectionMessage={connectionMessage}
-        isTestingConnection={isTestingConnection}
-        updateConnectionField={updateConnectionField}
-        handleTestConnection={handleTestConnection}
+        isConnected={isConnected}
+        hasSavedProfile={hasSavedProfile}
+        openConnectionModal={openConnectionModal}
+        handleDisconnect={handleDisconnect}
       />
 
       <DatabaseExplorer
@@ -73,6 +81,16 @@ export const Sidebar = ({
         refreshExplorer={refreshExplorer}
         selectedRelationKey={selectedRelationKey}
         handleOpenRelation={handleOpenRelation}
+      />
+
+      <ConnectionModal
+        isOpen={isConnectionModalOpen}
+        connectionForm={connectionForm}
+        connectionMessage={connectionMessage}
+        isTestingConnection={isTestingConnection}
+        updateConnectionField={updateConnectionField}
+        closeConnectionModal={closeConnectionModal}
+        handleConnect={handleConnect}
       />
     </aside>
   );

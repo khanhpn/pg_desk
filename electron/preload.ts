@@ -70,6 +70,10 @@ const pgdeskApi = {
     disconnect: (): Promise<{ ok: boolean; message: string }> => {
       return ipcRenderer.invoke("connection:disconnect");
     },
+
+    getProfile: (): Promise<PgConnectionConfig | null> => {
+      return ipcRenderer.invoke("connection:profile:get");
+    },
   },
 
   query: {

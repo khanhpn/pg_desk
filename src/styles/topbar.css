@@ -1,0 +1,75 @@
+.topbar {
+  height: 38px;
+  border-bottom: 1px solid #202938;
+  background: #0d111a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tabs {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.tab {
+  height: 28px;
+  min-width: 82px;
+  padding: 6px 12px;
+  border-radius: 7px 7px 0 0;
+  color: #8d98aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.tab.active {
+  background: #111827;
+  color: #f8fafc;
+  border: 1px solid #202938;
+  border-bottom-color: #111827;
+}
+
+.new-tab {
+  border: 1px solid #2a3445;
+  background: #111827;
+  color: #d6deeb;
+  border-radius: 6px;
+  height: 24px;
+  min-width: 24px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.new-tab:hover {
+  background: #182235;
+}
+
+.connection-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 12px;
+  font-size: 11px;
+  color: #8d98aa;
+}
+
+.connection-info-button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.connection-info-button:hover {
+  color: #d6deeb;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #22c55e;
+}

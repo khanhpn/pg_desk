@@ -60,6 +60,7 @@ type PgDeskApi = {
     test: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
     connect: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
     disconnect: () => Promise<{ ok: boolean; message: string }>;
+    getProfile: () => Promise<PgConnectionConfig | null>;
   };
 
   query: {

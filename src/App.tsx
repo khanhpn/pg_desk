@@ -23,8 +23,14 @@ const App = () => {
     connectionForm,
     connectionMessage,
     isTestingConnection,
+    isConnected,
+    isConnectionModalOpen,
     updateConnectionField,
-    handleTestConnection,
+    openConnectionModal,
+    closeConnectionModal,
+    handleConnect,
+    handleDisconnect,
+    hasSavedProfile,
   } = useConnectionTest({
     onConnected: refreshExplorer,
   });
@@ -58,8 +64,14 @@ const App = () => {
         connectionForm={connectionForm}
         connectionMessage={connectionMessage}
         isTestingConnection={isTestingConnection}
+        isConnected={isConnected}
+        isConnectionModalOpen={isConnectionModalOpen}
+        hasSavedProfile={hasSavedProfile}
         updateConnectionField={updateConnectionField}
-        handleTestConnection={handleTestConnection}
+        openConnectionModal={openConnectionModal}
+        closeConnectionModal={closeConnectionModal}
+        handleConnect={handleConnect}
+        handleDisconnect={handleDisconnect}
         schemas={schemas}
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}

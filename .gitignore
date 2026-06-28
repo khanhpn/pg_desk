@@ -49,3 +49,4 @@ coverage
 
 # Electron-builder artifacts (outside release/)
 *.blockmap
+dist-release
