@@ -1,10 +1,12 @@
 import { ConnectionModal } from "@/components/ConnectionModal";
 import { ConnectionSummaryCard } from "@/components/ConnectionSummaryCard";
 import { DatabaseExplorer } from "@/components/DatabaseExplorer";
+import type { CSSProperties } from "react";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
 import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
 type SidebarProps = {
+  sidebarWidth: number;
   connectionForm: PgConnectionForm;
   connectionMessage: string;
   isTestingConnection: boolean;
@@ -29,6 +31,7 @@ type SidebarProps = {
 };
 
 export const Sidebar = ({
+  sidebarWidth,
   connectionForm,
   connectionMessage,
   isTestingConnection,
@@ -48,8 +51,12 @@ export const Sidebar = ({
   selectedRelationKey,
   handleOpenRelation,
 }: SidebarProps) => {
+  const sidebarStyle = {
+    "--sidebar-width": `${sidebarWidth}px`,
+  } as CSSProperties;
+
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={sidebarStyle}>
       <div className="sidebar-header">
         <div>
           <div className="app-title">pgdesk</div>

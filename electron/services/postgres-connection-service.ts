@@ -6,7 +6,13 @@ import type {
   PgConnectionConfig,
   PgConnectionTestResult,
 } from "@electron/types/connection";
-import type { QueryRunPayload, QueryRunResult } from "@electron/types/query";
+import type {
+  QueryCellUpdatePayload,
+  QueryCellUpdateResult,
+  QueryColumnMetadata,
+  QueryRunPayload,
+  QueryRunResult,
+} from "@electron/types/query";
 
 // import utils
 import { getErrorMessage } from "@electron/utils/error";
@@ -18,6 +24,45 @@ const require = createRequire(import.meta.url);
 const { Pool } = require("pg") as typeof import("pg");
 
 let activePool: PgPool | null = null;
+
+type QueryFieldMetadata = {
+  name: string;
+  dataTypeID: number;
+  tableID: number;
+  columnID: number;
+};
+
+type PrimaryKeyColumnRow = {
+  table_oid: number;
+  schema_name: string;
+  table_name: string;
+  column_name: string;
+  column_id: number;
+};
+
+type EditableTableMetadata = {
+  schemaName: string;
+  tableName: string;
+  primaryKeys: Array<{
+    columnName: string;
+    columnId: number;
+  }>;
+};
+
+type TableColumnRow = {
+  schema_name: string;
+  table_name: string;
+  column_name: string;
+  is_primary_key: boolean;
+};
+
+type SourceColumnRow = {
+  table_oid: number;
+  schema_name: string;
+  table_name: string;
+  column_name: string;
+  column_id: number;
+};
 
 export const getActivePostgresPool = (): PgPool | null => {
   return activePool;
@@ -34,6 +79,169 @@ const createPool = (config: PgConnectionConfig): PgPool => {
     connectionTimeoutMillis: 3000,
     max: 5,
   });
+};
+
+const quoteIdentifier = (identifier: string): string => {
+  return `"${identifier.replace(/"/g, '""')}"`;
+};
+
+const getPrimaryKeyMetadata = async (
+  tableOids: number[],
+): Promise<Map<number, EditableTableMetadata>> => {
+  const metadata = new Map<number, EditableTableMetadata>();
+
+  if (tableOids.length === 0 || !activePool) {
+    return metadata;
+  }
+
+  const result = await activePool.query<PrimaryKeyColumnRow>(
+    `
+      select
+        c.oid::int as table_oid,
+        n.nspname as schema_name,
+        c.relname as table_name,
+        a.attname as column_name,
+        a.attnum::int as column_id
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      join pg_index i on i.indrelid = c.oid and i.indisprimary
+      join unnest(i.indkey) with ordinality pk(attnum, ordinal) on true
+      join pg_attribute a on a.attrelid = c.oid and a.attnum = pk.attnum
+      where c.oid = any($1::oid[])
+        and c.relkind in ('r', 'p')
+      order by c.oid, pk.ordinal
+    `,
+    [tableOids],
+  );
+
+  result.rows.forEach((row) => {
+    const table =
+      metadata.get(row.table_oid) ??
+      ({
+        schemaName: row.schema_name,
+        tableName: row.table_name,
+        primaryKeys: [],
+      } satisfies EditableTableMetadata);
+
+    table.primaryKeys.push({
+      columnName: row.column_name,
+      columnId: row.column_id,
+    });
+
+    metadata.set(row.table_oid, table);
+  });
+
+  return metadata;
+};
+
+const getSourceColumnMetadata = async (
+  tableOids: number[],
+): Promise<Map<string, SourceColumnRow>> => {
+  const metadata = new Map<string, SourceColumnRow>();
+
+  if (tableOids.length === 0 || !activePool) {
+    return metadata;
+  }
+
+  const result = await activePool.query<SourceColumnRow>(
+    `
+      select
+        c.oid::int as table_oid,
+        n.nspname as schema_name,
+        c.relname as table_name,
+        a.attname as column_name,
+        a.attnum::int as column_id
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      join pg_attribute a on a.attrelid = c.oid
+      where c.oid = any($1::oid[])
+        and c.relkind in ('r', 'p')
+        and a.attnum > 0
+        and not a.attisdropped
+    `,
+    [tableOids],
+  );
+
+  result.rows.forEach((row) => {
+    metadata.set(`${row.table_oid}.${row.column_id}`, row);
+  });
+
+  return metadata;
+};
+
+const buildColumnMetadata = async (
+  fields: QueryFieldMetadata[],
+): Promise<{ columns: QueryColumnMetadata[]; editMessage: string }> => {
+  const tableOids = Array.from(
+    new Set(fields.map((field) => field.tableID).filter((tableId) => tableId)),
+  );
+  const primaryKeyMetadata = await getPrimaryKeyMetadata(tableOids);
+  const sourceColumnMetadata = await getSourceColumnMetadata(tableOids);
+  const duplicateColumnNames = new Set<string>();
+  const seenColumnNames = new Set<string>();
+
+  fields.forEach((field) => {
+    if (seenColumnNames.has(field.name)) {
+      duplicateColumnNames.add(field.name);
+      return;
+    }
+
+    seenColumnNames.add(field.name);
+  });
+
+  const hasDuplicateColumnNames = duplicateColumnNames.size > 0;
+
+  const columns = fields.map<QueryColumnMetadata>((field) => {
+    const table = primaryKeyMetadata.get(field.tableID);
+    const sourceColumn = sourceColumnMetadata.get(
+      `${field.tableID}.${field.columnID}`,
+    );
+    const primaryKey = table?.primaryKeys.find(
+      (key) => key.columnId === field.columnID,
+    );
+    const hasPrimaryKeysInResult = Boolean(
+      table?.primaryKeys.every((key) =>
+        fields.some(
+          (candidate) =>
+            candidate.tableID === field.tableID &&
+            candidate.columnID === key.columnId,
+        ),
+      ),
+    );
+    const isTableColumn = field.tableID > 0 && field.columnID > 0;
+
+    return {
+      name: field.name,
+      dataTypeId: field.dataTypeID,
+      tableOid: field.tableID,
+      columnId: field.columnID,
+      columnName: sourceColumn?.column_name ?? null,
+      tableSchema: sourceColumn?.schema_name ?? table?.schemaName ?? null,
+      tableName: sourceColumn?.table_name ?? table?.tableName ?? null,
+      isPrimaryKey: Boolean(primaryKey),
+      isEditable:
+        isTableColumn &&
+        Boolean(sourceColumn) &&
+        Boolean(table) &&
+        hasPrimaryKeysInResult &&
+        !primaryKey &&
+        !hasDuplicateColumnNames,
+    };
+  });
+
+  let editMessage = "Editable cells can be saved to the database.";
+
+  if (hasDuplicateColumnNames) {
+    editMessage = "Read-only: duplicate column names in result.";
+  } else if (
+    columns.length > 0 &&
+    columns.every((column) => !column.isEditable)
+  ) {
+    editMessage =
+      "Read-only: include the table primary key columns in the result to edit.";
+  }
+
+  return { columns, editMessage };
 };
 
 const validateConnectionConfig = (
@@ -170,6 +378,7 @@ export const runPostgresQuery = async ({
       ok: false,
       message: "No active PostgreSQL connection",
       columns: [],
+      columnMetadata: [],
       rows: [],
       rowCount: 0,
       durationMs: 0,
@@ -181,6 +390,7 @@ export const runPostgresQuery = async ({
       ok: false,
       message: "SQL is empty",
       columns: [],
+      columnMetadata: [],
       rows: [],
       rowCount: 0,
       durationMs: 0,
@@ -192,24 +402,157 @@ export const runPostgresQuery = async ({
   try {
     const result = await activePool.query(sql);
     const durationMs = Date.now() - startedAt;
+    const { columns: columnMetadata, editMessage } = await buildColumnMetadata(
+      result.fields as QueryFieldMetadata[],
+    );
 
     return {
       ok: true,
       message: "Query executed successfully",
       columns: result.fields.map((field) => field.name),
+      columnMetadata,
       rows: result.rows,
       rowCount: result.rowCount ?? result.rows.length,
       durationMs,
       command: result.command,
+      editMessage,
     };
   } catch (error) {
     return {
       ok: false,
       message: getErrorMessage(error),
       columns: [],
+      columnMetadata: [],
       rows: [],
       rowCount: 0,
       durationMs: Date.now() - startedAt,
+    };
+  }
+};
+
+export const updatePostgresCell = async ({
+  tableOid,
+  columnName,
+  primaryKeys,
+  value,
+}: QueryCellUpdatePayload): Promise<QueryCellUpdateResult> => {
+  if (!activePool) {
+    return {
+      ok: false,
+      message: "No active PostgreSQL connection",
+      rowCount: 0,
+    };
+  }
+
+  if (!Number.isFinite(tableOid) || tableOid <= 0) {
+    return {
+      ok: false,
+      message: "Editable table metadata is invalid",
+      rowCount: 0,
+    };
+  }
+
+  if (!columnName.trim() || primaryKeys.length === 0) {
+    return {
+      ok: false,
+      message: "Editable row metadata is incomplete",
+      rowCount: 0,
+    };
+  }
+
+  try {
+    const metadataResult = await activePool.query<TableColumnRow>(
+      `
+        select
+          n.nspname as schema_name,
+          c.relname as table_name,
+          a.attname as column_name,
+          exists (
+            select 1
+            from pg_index i
+            where i.indrelid = c.oid
+              and i.indisprimary
+              and a.attnum = any(i.indkey)
+          ) as is_primary_key
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        join pg_attribute a on a.attrelid = c.oid
+        where c.oid = $1::oid
+          and c.relkind in ('r', 'p')
+          and a.attnum > 0
+          and not a.attisdropped
+      `,
+      [tableOid],
+    );
+
+    const tableColumn = metadataResult.rows.find((row) => {
+      return row.column_name === columnName;
+    });
+
+    if (!tableColumn || tableColumn.is_primary_key) {
+      return {
+        ok: false,
+        message: "This column cannot be edited",
+        rowCount: 0,
+      };
+    }
+
+    const primaryKeyColumns = metadataResult.rows
+      .filter((row) => row.is_primary_key)
+      .map((row) => row.column_name);
+
+    const hasExpectedPrimaryKeys =
+      primaryKeyColumns.length > 0 &&
+      primaryKeyColumns.every((primaryKeyColumn) => {
+        return primaryKeys.some((key) => key.columnName === primaryKeyColumn);
+      });
+
+    if (!hasExpectedPrimaryKeys) {
+      return {
+        ok: false,
+        message: "Primary key values are required to save this row",
+        rowCount: 0,
+      };
+    }
+
+    const updateValues = [value, ...primaryKeys.map((key) => key.value)];
+    const whereClause = primaryKeys
+      .map((key, index) => {
+        return `${quoteIdentifier(key.columnName)} = $${index + 2}`;
+      })
+      .join(" and ");
+
+    const result = await activePool.query(
+      `
+        update ${quoteIdentifier(tableColumn.schema_name)}.${quoteIdentifier(
+          tableColumn.table_name,
+        )}
+        set ${quoteIdentifier(columnName)} = $1
+        where ${whereClause}
+      `,
+      updateValues,
+    );
+
+    const rowCount = result.rowCount ?? 0;
+
+    if (rowCount === 0) {
+      return {
+        ok: false,
+        message: "No row was updated. The row may have changed.",
+        rowCount,
+      };
+    }
+
+    return {
+      ok: true,
+      message: `Saved ${rowCount} row${rowCount === 1 ? "" : "s"}`,
+      rowCount,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      rowCount: 0,
     };
   }
 };

@@ -7,6 +7,16 @@
   color: #d6deeb;
 }
 
+.app-shell.is-resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.app-shell.is-resizing-result {
+  cursor: row-resize;
+  user-select: none;
+}
+
 .workspace {
   flex: 1;
   min-width: 0;
@@ -14,4 +24,51 @@
   display: flex;
   flex-direction: column;
   background: #0b0f17;
+}
+
+.sidebar-resize-handle {
+  width: 8px;
+  height: 100%;
+  margin-left: -4px;
+  margin-right: -4px;
+  z-index: 5;
+  cursor: col-resize;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  background: transparent;
+  transition: background 0.14s ease;
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:active::after {
+  background: #58a6ff;
+}
+
+.result-resize-handle {
+  height: 9px;
+  margin-top: -4px;
+  margin-bottom: -5px;
+  z-index: 4;
+  cursor: row-resize;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.result-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset: 4px 0;
+  background: transparent;
+  transition: background 0.14s ease;
+}
+
+.result-resize-handle:hover::after,
+.result-resize-handle:active::after {
+  background: #58a6ff;
 }

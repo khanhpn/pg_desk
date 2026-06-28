@@ -11,7 +11,9 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "dev": "vite",
+    "prebuild": "pnpm run docs:sync-version",
     "build": "tsc && vite build",
+    "docs:sync-version": "node scripts/sync-docs-version.mjs",
     "release:mac": "pnpm run build && electron-builder --mac dmg zip --publish never",
     "release:win": "pnpm run build && electron-builder --win nsis --publish never",
     "release": "pnpm run build && electron-builder --publish never",

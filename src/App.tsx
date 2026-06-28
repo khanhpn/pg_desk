@@ -1,6 +1,18 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import "@/App.css";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { PgRelationInfo } from "@/types/metadata";
+
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(Math.max(value, min), max);
+};
+
+const SIDEBAR_MIN_WIDTH = 240;
+const SIDEBAR_MAX_WIDTH = 460;
+const SIDEBAR_DEFAULT_WIDTH = 280;
+const RESULT_PANEL_MIN_HEIGHT = 180;
+const RESULT_PANEL_MAX_HEIGHT = 560;
+const RESULT_PANEL_DEFAULT_HEIGHT = 260;
 
 // imports components
 import { QueryToolbar } from "@/components/QueryToolbar";
@@ -59,6 +71,73 @@ const App = () => {
   const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
     null,
   );
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [resultPanelHeight, setResultPanelHeight] = useState(
+    RESULT_PANEL_DEFAULT_HEIGHT,
+  );
+  const [resizeMode, setResizeMode] = useState<"sidebar" | "result" | null>(
+    null,
+  );
+
+  const handleSidebarResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setResizeMode("sidebar");
+
+      const startX = event.clientX;
+      const startWidth = sidebarWidth;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        setSidebarWidth(
+          clamp(
+            startWidth + moveEvent.clientX - startX,
+            SIDEBAR_MIN_WIDTH,
+            SIDEBAR_MAX_WIDTH,
+          ),
+        );
+      };
+
+      const handlePointerUp = () => {
+        setResizeMode(null);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+      };
+
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    },
+    [sidebarWidth],
+  );
+
+  const handleResultPanelResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setResizeMode("result");
+
+      const startY = event.clientY;
+      const startHeight = resultPanelHeight;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        setResultPanelHeight(
+          clamp(
+            startHeight + startY - moveEvent.clientY,
+            RESULT_PANEL_MIN_HEIGHT,
+            RESULT_PANEL_MAX_HEIGHT,
+          ),
+        );
+      };
+
+      const handlePointerUp = () => {
+        setResizeMode(null);
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+      };
+
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    },
+    [resultPanelHeight],
+  );
 
   const handleSelectRelation = async (
     relation: PgRelationInfo,
@@ -68,8 +147,13 @@ const App = () => {
   };
 
   return (
-    <div className="app-shell">
+    <div
+      className={
+        resizeMode ? `app-shell is-resizing-${resizeMode}` : "app-shell"
+      }
+    >
       <Sidebar
+        sidebarWidth={sidebarWidth}
         connectionForm={connectionForm}
         connectionMessage={connectionMessage}
         isTestingConnection={isTestingConnection}
@@ -89,6 +173,14 @@ const App = () => {
         handleOpenRelation={handleSelectRelation}
       />
 
+      <div
+        className="sidebar-resize-handle"
+        role="separator"
+        aria-label="Resize sidebar"
+        aria-orientation="vertical"
+        onPointerDown={handleSidebarResizeStart}
+      />
+
       <main className="workspace">
         <Topbar ipcMessage={ipcMessage} handlePing={handlePing} />
 
@@ -100,7 +192,19 @@ const App = () => {
 
         <SqlEditor sql={sql} setSql={setSql} handleRunQuery={handleRunQuery} />
 
-        <ResultPanel queryResult={queryResult} queryMessage={queryMessage} />
+        <div
+          className="result-resize-handle"
+          role="separator"
+          aria-label="Resize query result panel"
+          aria-orientation="horizontal"
+          onPointerDown={handleResultPanelResizeStart}
+        />
+
+        <ResultPanel
+          queryResult={queryResult}
+          queryMessage={queryMessage}
+          panelHeight={resultPanelHeight}
+        />
       </main>
 
       <AppUpdateToast
