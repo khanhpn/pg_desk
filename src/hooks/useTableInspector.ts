@@ -7,7 +7,7 @@ type TableInspectorMenuState = {
   y: number;
 };
 
-export const useTableInspector = () => {
+export const useTableInspector = (connectionId: string | null) => {
   const [contextMenu, setContextMenu] =
     useState<TableInspectorMenuState | null>(null);
   const [selectedTable, setSelectedTable] = useState<PgRelationInfo | null>(
@@ -30,6 +30,11 @@ export const useTableInspector = () => {
 
   const openTableInspector = useCallback(
     async (relation: PgRelationInfo): Promise<void> => {
+      if (!connectionId) {
+        setTableDetailMessage("Select a connection before loading table details.");
+        return;
+      }
+
       closeTableContextMenu();
       setSelectedTable(relation);
       setTableDetail(null);
@@ -40,6 +45,7 @@ export const useTableInspector = () => {
         const result = await window.pgdesk.metadata.tableDetail(
           relation.schema,
           relation.name,
+          connectionId,
         );
 
         if (result.ok && result.table) {
@@ -57,7 +63,7 @@ export const useTableInspector = () => {
         setIsLoadingTableDetail(false);
       }
     },
-    [closeTableContextMenu],
+    [closeTableContextMenu, connectionId],
   );
 
   const closeTableInspector = useCallback((): void => {

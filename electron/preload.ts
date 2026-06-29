@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 type PgConnectionConfig = {
+  id?: string;
+  name?: string;
   host: string;
   port: number;
   database: string;
@@ -15,6 +17,17 @@ type PgConnectionTestResult = {
   database?: string;
   user?: string;
   serverVersion?: string;
+};
+
+type PgConnectionProfile = PgConnectionConfig & {
+  id: string;
+  name: string;
+};
+
+type PgConnectionListResult = {
+  profiles: PgConnectionProfile[];
+  activeConnectionId: string | null;
+  connectedConnectionIds: string[];
 };
 
 type QueryRunResult = {
@@ -42,6 +55,7 @@ type QueryColumnMetadata = {
 };
 
 type QueryCellUpdatePayload = {
+  connectionId?: string | null;
   tableOid: number;
   columnName: string;
   primaryKeys: Array<{
@@ -186,8 +200,26 @@ const pgdeskApi = {
       return ipcRenderer.invoke("connection:connect", config);
     },
 
-    disconnect: (): Promise<{ ok: boolean; message: string }> => {
-      return ipcRenderer.invoke("connection:disconnect");
+    disconnect: (
+      connectionId?: string | null,
+    ): Promise<{ ok: boolean; message: string }> => {
+      return ipcRenderer.invoke("connection:disconnect", { connectionId });
+    },
+
+    list: (): Promise<PgConnectionListResult> => {
+      return ipcRenderer.invoke("connection:list");
+    },
+
+    deleteProfile: (
+      connectionId: string,
+    ): Promise<{ ok: boolean; message: string }> => {
+      return ipcRenderer.invoke("connection:profile:delete", { connectionId });
+    },
+
+    setActive: (
+      connectionId: string,
+    ): Promise<{ ok: boolean; message: string }> => {
+      return ipcRenderer.invoke("connection:set-active", { connectionId });
     },
 
     getProfile: (): Promise<PgConnectionConfig | null> => {
@@ -196,8 +228,11 @@ const pgdeskApi = {
   },
 
   query: {
-    run: (sql: string): Promise<QueryRunResult> => {
-      return ipcRenderer.invoke("query:run", { sql });
+    run: (
+      sql: string,
+      connectionId?: string | null,
+    ): Promise<QueryRunResult> => {
+      return ipcRenderer.invoke("query:run", { sql, connectionId });
     },
 
     updateCell: (
@@ -208,21 +243,32 @@ const pgdeskApi = {
   },
 
   metadata: {
-    explorer: (): Promise<PgDatabaseExplorerResult> => {
-      return ipcRenderer.invoke("metadata:explorer");
+    explorer: (
+      connectionId?: string | null,
+    ): Promise<PgDatabaseExplorerResult> => {
+      return ipcRenderer.invoke("metadata:explorer", { connectionId });
     },
 
     tableDetail: (
       schema: string,
       table: string,
+      connectionId?: string | null,
     ): Promise<PgTableDetailResult> => {
-      return ipcRenderer.invoke("metadata:table-detail", { schema, table });
+      return ipcRenderer.invoke("metadata:table-detail", {
+        schema,
+        table,
+        connectionId,
+      });
     },
 
     applyTableChange: (
       payload: PgTableChangePayload,
+      connectionId?: string | null,
     ): Promise<PgTableChangeResult> => {
-      return ipcRenderer.invoke("metadata:apply-table-change", payload);
+      return ipcRenderer.invoke("metadata:apply-table-change", {
+        change: payload,
+        connectionId,
+      });
     },
   },
 

@@ -4,6 +4,7 @@ import type { Pool as PgPool, PoolClient } from "pg";
 // import types
 import type {
   PgConnectionConfig,
+  PgConnectionListResult,
   PgConnectionTestResult,
 } from "@electron/types/connection";
 import type {
@@ -18,12 +19,18 @@ import type {
 import { getErrorMessage } from "@electron/utils/error";
 
 // import services
-import { saveConnectionProfile } from "@electron/services/connection-profile-service";
+import {
+  deleteConnectionProfile,
+  loadConnectionProfiles,
+  saveConnectionProfile,
+  setActiveConnectionProfile,
+} from "@electron/services/connection-profile-service";
 
 const require = createRequire(import.meta.url);
 const { Pool } = require("pg") as typeof import("pg");
 
-let activePool: PgPool | null = null;
+const poolsByConnectionId = new Map<string, PgPool>();
+let activeConnectionId: string | null = null;
 
 type QueryFieldMetadata = {
   name: string;
@@ -64,8 +71,18 @@ type SourceColumnRow = {
   column_id: number;
 };
 
-export const getActivePostgresPool = (): PgPool | null => {
-  return activePool;
+export const getActiveConnectionId = (): string | null => {
+  return activeConnectionId;
+};
+
+export const getActivePostgresPool = (
+  connectionId?: string | null,
+): PgPool | null => {
+  const targetConnectionId = connectionId ?? activeConnectionId;
+
+  return targetConnectionId
+    ? (poolsByConnectionId.get(targetConnectionId) ?? null)
+    : null;
 };
 
 const createPool = (config: PgConnectionConfig): PgPool => {
@@ -86,15 +103,16 @@ const quoteIdentifier = (identifier: string): string => {
 };
 
 const getPrimaryKeyMetadata = async (
+  pool: PgPool,
   tableOids: number[],
 ): Promise<Map<number, EditableTableMetadata>> => {
   const metadata = new Map<number, EditableTableMetadata>();
 
-  if (tableOids.length === 0 || !activePool) {
+  if (tableOids.length === 0) {
     return metadata;
   }
 
-  const result = await activePool.query<PrimaryKeyColumnRow>(
+  const result = await pool.query<PrimaryKeyColumnRow>(
     `
       select
         c.oid::int as table_oid,
@@ -135,15 +153,16 @@ const getPrimaryKeyMetadata = async (
 };
 
 const getSourceColumnMetadata = async (
+  pool: PgPool,
   tableOids: number[],
 ): Promise<Map<string, SourceColumnRow>> => {
   const metadata = new Map<string, SourceColumnRow>();
 
-  if (tableOids.length === 0 || !activePool) {
+  if (tableOids.length === 0) {
     return metadata;
   }
 
-  const result = await activePool.query<SourceColumnRow>(
+  const result = await pool.query<SourceColumnRow>(
     `
       select
         c.oid::int as table_oid,
@@ -170,13 +189,14 @@ const getSourceColumnMetadata = async (
 };
 
 const buildColumnMetadata = async (
+  pool: PgPool,
   fields: QueryFieldMetadata[],
 ): Promise<{ columns: QueryColumnMetadata[]; editMessage: string }> => {
   const tableOids = Array.from(
     new Set(fields.map((field) => field.tableID).filter((tableId) => tableId)),
   );
-  const primaryKeyMetadata = await getPrimaryKeyMetadata(tableOids);
-  const sourceColumnMetadata = await getSourceColumnMetadata(tableOids);
+  const primaryKeyMetadata = await getPrimaryKeyMetadata(pool, tableOids);
+  const sourceColumnMetadata = await getSourceColumnMetadata(pool, tableOids);
   const duplicateColumnNames = new Set<string>();
   const seenColumnNames = new Set<string>();
 
@@ -340,13 +360,15 @@ export const connectPostgres = async (
   try {
     client = await nextPool.connect();
     const connectionInfo = await getConnectionInfo(client);
+    const savedProfile = await saveConnectionProfile(config);
+    const existingPool = poolsByConnectionId.get(savedProfile.id);
 
-    if (activePool) {
-      await activePool.end();
+    if (existingPool) {
+      await existingPool.end();
     }
 
-    activePool = nextPool;
-    await saveConnectionProfile(config);
+    poolsByConnectionId.set(savedProfile.id, nextPool);
+    activeConnectionId = savedProfile.id;
 
     return connectionInfo;
   } catch (error) {
@@ -361,19 +383,69 @@ export const connectPostgres = async (
   }
 };
 
-export const disconnectPostgres = async (): Promise<void> => {
-  if (!activePool) {
+export const listPostgresConnections =
+  async (): Promise<PgConnectionListResult> => {
+    const profileList = await loadConnectionProfiles();
+    const profileIds = new Set(
+      profileList.profiles.map((profile) => profile.id),
+    );
+
+    if (!activeConnectionId || !profileIds.has(activeConnectionId)) {
+      activeConnectionId = profileList.activeConnectionId;
+    }
+
+    return {
+      profiles: profileList.profiles,
+      activeConnectionId,
+      connectedConnectionIds: Array.from(poolsByConnectionId.keys()),
+    };
+  };
+
+export const setActivePostgresConnection = async (
+  connectionId: string,
+): Promise<void> => {
+  await setActiveConnectionProfile(connectionId);
+  activeConnectionId = connectionId;
+};
+
+export const deletePostgresConnectionProfile = async (
+  connectionId: string,
+): Promise<void> => {
+  await disconnectPostgres(connectionId);
+  await deleteConnectionProfile(connectionId);
+
+  if (activeConnectionId === connectionId) {
+    const nextList = await loadConnectionProfiles();
+    activeConnectionId = nextList.activeConnectionId;
+  }
+};
+
+export const disconnectPostgres = async (
+  connectionId?: string | null,
+): Promise<void> => {
+  const targetConnectionId = connectionId ?? activeConnectionId;
+
+  if (!targetConnectionId) {
     return;
   }
 
-  await activePool.end();
-  activePool = null;
+  const pool = poolsByConnectionId.get(targetConnectionId);
+
+  if (!pool) {
+    return;
+  }
+
+  await pool.end();
+  poolsByConnectionId.delete(targetConnectionId);
 };
 
 export const runPostgresQuery = async ({
+  connectionId,
   sql,
 }: QueryRunPayload): Promise<QueryRunResult> => {
-  if (!activePool) {
+  const pool = getActivePostgresPool(connectionId);
+
+  if (!pool) {
     return {
       ok: false,
       message: "No active PostgreSQL connection",
@@ -400,9 +472,10 @@ export const runPostgresQuery = async ({
   const startedAt = Date.now();
 
   try {
-    const result = await activePool.query(sql);
+    const result = await pool.query(sql);
     const durationMs = Date.now() - startedAt;
     const { columns: columnMetadata, editMessage } = await buildColumnMetadata(
+      pool,
       result.fields as QueryFieldMetadata[],
     );
 
@@ -431,12 +504,15 @@ export const runPostgresQuery = async ({
 };
 
 export const updatePostgresCell = async ({
+  connectionId,
   tableOid,
   columnName,
   primaryKeys,
   value,
 }: QueryCellUpdatePayload): Promise<QueryCellUpdateResult> => {
-  if (!activePool) {
+  const pool = getActivePostgresPool(connectionId);
+
+  if (!pool) {
     return {
       ok: false,
       message: "No active PostgreSQL connection",
@@ -461,7 +537,7 @@ export const updatePostgresCell = async ({
   }
 
   try {
-    const metadataResult = await activePool.query<TableColumnRow>(
+    const metadataResult = await pool.query<TableColumnRow>(
       `
         select
           n.nspname as schema_name,
@@ -522,7 +598,7 @@ export const updatePostgresCell = async ({
       })
       .join(" and ");
 
-    const result = await activePool.query(
+    const result = await pool.query(
       `
         update ${quoteIdentifier(tableColumn.schema_name)}.${quoteIdentifier(
           tableColumn.table_name,

@@ -46,6 +46,17 @@ export const ConnectionModal = ({
         </div>
 
         <div className="modal-body">
+          <label className="modal-field">
+            <span>Name</span>
+            <input
+              value={connectionForm.name}
+              placeholder="Local, Staging, Production"
+              onChange={(event) =>
+                updateConnectionField("name", event.target.value)
+              }
+            />
+          </label>
+
           <div className="modal-grid">
             <label className="modal-field">
               <span>Host</span>

@@ -115,27 +115,28 @@ const buildTableChangeSql = (payload: PgTableChangePayload): string => {
   )} type ${getSupportedDataType(payload.dataType)};`;
 };
 
-export const getPostgresExplorer =
-  async (): Promise<PgDatabaseExplorerResult> => {
-    const pool = getActivePostgresPool();
+export const getPostgresExplorer = async (
+  connectionId?: string | null,
+): Promise<PgDatabaseExplorerResult> => {
+  const pool = getActivePostgresPool(connectionId);
 
-    if (!pool) {
-      return {
-        ok: false,
-        message: "No active PostgreSQL connection",
-        schemas: [],
-      };
-    }
+  if (!pool) {
+    return {
+      ok: false,
+      message: "No active PostgreSQL connection",
+      schemas: [],
+    };
+  }
 
-    try {
-      const schemasResult = await pool.query<SchemaRow>(`
+  try {
+    const schemasResult = await pool.query<SchemaRow>(`
       select schema_name
       from information_schema.schemata
       where schema_name not in ('pg_catalog', 'information_schema')
       order by schema_name
     `);
 
-      const relationsResult = await pool.query<TableRow>(`
+    const relationsResult = await pool.query<TableRow>(`
       select table_schema, table_name, table_type
       from information_schema.tables
       where table_schema not in ('pg_catalog', 'information_schema')
@@ -143,59 +144,60 @@ export const getPostgresExplorer =
       order by table_schema, table_type, table_name
     `);
 
-      const schemaMap = new Map<string, PgSchemaInfo>();
+    const schemaMap = new Map<string, PgSchemaInfo>();
 
-      schemasResult.rows.forEach((row) => {
-        schemaMap.set(row.schema_name, {
-          name: row.schema_name,
+    schemasResult.rows.forEach((row) => {
+      schemaMap.set(row.schema_name, {
+        name: row.schema_name,
+        tables: [],
+        views: [],
+      });
+    });
+
+    relationsResult.rows.forEach((row) => {
+      const schema =
+        schemaMap.get(row.table_schema) ??
+        ({
+          name: row.table_schema,
           tables: [],
           views: [],
-        });
-      });
+        } satisfies PgSchemaInfo);
 
-      relationsResult.rows.forEach((row) => {
-        const schema =
-          schemaMap.get(row.table_schema) ??
-          ({
-            name: row.table_schema,
-            tables: [],
-            views: [],
-          } satisfies PgSchemaInfo);
-
-        const relation: PgRelationInfo = {
-          schema: row.table_schema,
-          name: row.table_name,
-          type: mapRelationType(row.table_type),
-        };
-
-        if (relation.type === "view") {
-          schema.views.push(relation);
-        } else {
-          schema.tables.push(relation);
-        }
-
-        schemaMap.set(row.table_schema, schema);
-      });
-
-      return {
-        ok: true,
-        message: "Explorer loaded",
-        schemas: Array.from(schemaMap.values()),
+      const relation: PgRelationInfo = {
+        schema: row.table_schema,
+        name: row.table_name,
+        type: mapRelationType(row.table_type),
       };
-    } catch (error) {
-      return {
-        ok: false,
-        message: getErrorMessage(error),
-        schemas: [],
-      };
-    }
-  };
+
+      if (relation.type === "view") {
+        schema.views.push(relation);
+      } else {
+        schema.tables.push(relation);
+      }
+
+      schemaMap.set(row.table_schema, schema);
+    });
+
+    return {
+      ok: true,
+      message: "Explorer loaded",
+      schemas: Array.from(schemaMap.values()),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      schemas: [],
+    };
+  }
+};
 
 export const getPostgresTableDetail = async (
   schema: string,
   table: string,
+  connectionId?: string | null,
 ): Promise<PgTableDetailResult> => {
-  const pool = getActivePostgresPool();
+  const pool = getActivePostgresPool(connectionId);
 
   if (!pool) {
     return {
@@ -366,8 +368,9 @@ export const getPostgresTableDetail = async (
 
 export const applyPostgresTableChange = async (
   payload: PgTableChangePayload,
+  connectionId?: string | null,
 ): Promise<PgTableChangeResult> => {
-  const pool = getActivePostgresPool();
+  const pool = getActivePostgresPool(connectionId);
 
   if (!pool) {
     return {
