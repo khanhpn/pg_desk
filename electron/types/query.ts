@@ -1,4 +1,5 @@
 export type QueryRunPayload = {
+  connectionId?: string | null;
   sql: string;
 };
 
@@ -27,6 +28,7 @@ export type QueryRunResult = {
 };
 
 export type QueryCellUpdatePayload = {
+  connectionId?: string | null;
   tableOid: number;
   columnName: string;
   primaryKeys: Array<{

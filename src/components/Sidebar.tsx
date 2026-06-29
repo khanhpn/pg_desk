@@ -4,24 +4,30 @@ import { DatabaseExplorer } from "@/components/DatabaseExplorer";
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import type { PgConnectionField, PgConnectionForm } from "@/types/connection";
+import type { PgConnectionProfile } from "@/types/connection";
 import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
 type SidebarProps = {
   sidebarWidth: number;
   connectionForm: PgConnectionForm;
+  connectionProfiles: PgConnectionProfile[];
+  activeConnectionId: string | null;
+  connectedConnectionIds: string[];
   connectionMessage: string;
   isTestingConnection: boolean;
-  isConnected: boolean;
   isConnectionModalOpen: boolean;
-  hasSavedProfile: boolean;
   updateConnectionField: (
     field: PgConnectionField,
     value: string | boolean,
   ) => void;
-  openConnectionModal: () => void;
+  openNewConnectionModal: () => void;
+  editConnectionProfile: (profile: PgConnectionProfile) => void;
+  connectConnectionProfile: (profile: PgConnectionProfile) => Promise<void>;
   closeConnectionModal: () => void;
   handleConnect: () => Promise<void>;
-  handleDisconnect: () => Promise<void>;
+  handleDisconnect: (connectionId?: string | null) => Promise<void>;
+  selectConnectionProfile: (connectionId: string) => Promise<void>;
+  deleteConnectionProfile: (connectionId: string) => Promise<void>;
 
   schemas: PgSchemaInfo[];
   explorerMessage: string;
@@ -39,16 +45,21 @@ type SidebarProps = {
 export const Sidebar = ({
   sidebarWidth,
   connectionForm,
+  connectionProfiles,
+  activeConnectionId,
+  connectedConnectionIds,
   connectionMessage,
   isTestingConnection,
-  isConnected,
   isConnectionModalOpen,
-  hasSavedProfile,
   updateConnectionField,
-  openConnectionModal,
+  openNewConnectionModal,
+  editConnectionProfile,
+  connectConnectionProfile,
   closeConnectionModal,
   handleConnect,
   handleDisconnect,
+  selectConnectionProfile,
+  deleteConnectionProfile,
 
   schemas,
   explorerMessage,
@@ -77,18 +88,22 @@ export const Sidebar = ({
         <button
           className="icon-button"
           type="button"
-          onClick={openConnectionModal}
+          onClick={openNewConnectionModal}
         >
           +
         </button>
       </div>
 
       <ConnectionSummaryCard
-        connectionForm={connectionForm}
+        connectionProfiles={connectionProfiles}
+        activeConnectionId={activeConnectionId}
+        connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
-        isConnected={isConnected}
-        hasSavedProfile={hasSavedProfile}
-        openConnectionModal={openConnectionModal}
+        openNewConnectionModal={openNewConnectionModal}
+        editConnectionProfile={editConnectionProfile}
+        connectConnectionProfile={connectConnectionProfile}
+        selectConnectionProfile={selectConnectionProfile}
+        deleteConnectionProfile={deleteConnectionProfile}
         handleDisconnect={handleDisconnect}
       />
 

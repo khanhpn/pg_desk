@@ -1,17 +1,23 @@
 import { useCallback, useState } from "react";
 import type { PgSchemaInfo } from "@/types/metadata";
 
-export const useDatabaseExplorer = () => {
+export const useDatabaseExplorer = (connectionId: string | null) => {
   const [schemas, setSchemas] = useState<PgSchemaInfo[]>([]);
   const [explorerMessage, setExplorerMessage] = useState("Not loaded");
   const [isLoadingExplorer, setIsLoadingExplorer] = useState(false);
 
   const refreshExplorer = useCallback(async (): Promise<void> => {
+    if (!connectionId) {
+      setSchemas([]);
+      setExplorerMessage("Select a connection");
+      return;
+    }
+
     setIsLoadingExplorer(true);
     setExplorerMessage("Loading explorer...");
 
     try {
-      const result = await window.pgdesk.metadata.explorer();
+      const result = await window.pgdesk.metadata.explorer(connectionId);
 
       if (result.ok) {
         setSchemas(result.schemas);
@@ -29,7 +35,7 @@ export const useDatabaseExplorer = () => {
     } finally {
       setIsLoadingExplorer(false);
     }
-  }, []);
+  }, [connectionId]);
 
   return {
     schemas,

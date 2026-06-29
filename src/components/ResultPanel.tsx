@@ -10,6 +10,7 @@ const COLUMN_MAX_WIDTH = 720;
 const COLUMN_DEFAULT_WIDTH = 150;
 
 type ResultPanelProps = {
+  connectionId: string | null;
   queryResult: QueryRunResult | null;
   queryMessage: string;
   panelHeight: number;
@@ -48,6 +49,7 @@ const getDefaultColumnWidth = (column: string): number => {
 };
 
 export const ResultPanel = ({
+  connectionId,
   queryResult,
   queryMessage,
   panelHeight,
@@ -65,7 +67,7 @@ export const ResultPanel = ({
     isCellDirty,
     updateDraftCell,
     saveChanges,
-  } = useResultEditing(queryResult);
+  } = useResultEditing(queryResult, connectionId);
   const resultPanelStyle = useMemo(
     () =>
       ({

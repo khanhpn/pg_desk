@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "@/App.css";
 import type { PgRelationInfo } from "@/types/metadata";
 
@@ -22,24 +22,34 @@ import { useResizablePanels } from "@/hooks/useResizablePanels";
 import { useTableInspector } from "@/hooks/useTableInspector";
 
 const App = () => {
-  const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
-    useDatabaseExplorer();
-
+  const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
+    null,
+  );
   const {
     connectionForm,
+    connectionProfiles,
+    activeConnectionId,
+    connectedConnectionIds,
     connectionMessage,
     isTestingConnection,
     isConnected,
     isConnectionModalOpen,
     updateConnectionField,
-    openConnectionModal,
+    openNewConnectionModal,
+    editConnectionProfile,
+    connectConnectionProfile,
     closeConnectionModal,
     handleConnect,
     handleDisconnect,
-    hasSavedProfile,
+    selectConnectionProfile,
+    deleteConnectionProfile,
   } = useConnectionTest({
-    onConnected: refreshExplorer,
+    onActiveConnectionChanged: () => {
+      setSelectedRelationKey(null);
+    },
   });
+  const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
+    useDatabaseExplorer(activeConnectionId);
 
   const { ipcMessage, handlePing } = useIpcPing();
 
@@ -59,7 +69,7 @@ const App = () => {
     formatActiveTabSql,
     handleRunQuery,
     handleOpenRelation,
-  } = useSqlQuery();
+  } = useSqlQuery(activeConnectionId);
 
   const {
     updateStatus,
@@ -68,9 +78,6 @@ const App = () => {
     closeUpdateToast,
   } = useAppUpdate();
 
-  const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
-    null,
-  );
   const {
     appShellClassName,
     sidebarWidth,
@@ -89,7 +96,7 @@ const App = () => {
     openTableInspector,
     closeTableInspector,
     refreshTableInspector,
-  } = useTableInspector();
+  } = useTableInspector(activeConnectionId);
 
   const handleSelectRelation = useCallback(
     async (relation: PgRelationInfo): Promise<void> => {
@@ -99,21 +106,34 @@ const App = () => {
     [handleOpenRelation],
   );
 
+  useEffect(() => {
+    if (!isConnected) {
+      return;
+    }
+
+    void refreshExplorer();
+  }, [isConnected, refreshExplorer]);
+
   return (
     <div className={appShellClassName}>
       <Sidebar
         sidebarWidth={sidebarWidth}
         connectionForm={connectionForm}
+        connectionProfiles={connectionProfiles}
+        activeConnectionId={activeConnectionId}
+        connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
         isTestingConnection={isTestingConnection}
-        isConnected={isConnected}
         isConnectionModalOpen={isConnectionModalOpen}
-        hasSavedProfile={hasSavedProfile}
         updateConnectionField={updateConnectionField}
-        openConnectionModal={openConnectionModal}
+        openNewConnectionModal={openNewConnectionModal}
+        editConnectionProfile={editConnectionProfile}
+        connectConnectionProfile={connectConnectionProfile}
         closeConnectionModal={closeConnectionModal}
         handleConnect={handleConnect}
         handleDisconnect={handleDisconnect}
+        selectConnectionProfile={selectConnectionProfile}
+        deleteConnectionProfile={deleteConnectionProfile}
         schemas={schemas}
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}
@@ -168,6 +188,7 @@ const App = () => {
         />
 
         <ResultPanel
+          connectionId={activeConnectionId}
           queryResult={queryResult}
           queryMessage={queryMessage}
           panelHeight={resultPanelHeight}
@@ -192,6 +213,7 @@ const App = () => {
       )}
 
       <TableInspectorDrawer
+        connectionId={activeConnectionId}
         relation={selectedTable}
         tableDetail={tableDetail}
         isLoading={isLoadingTableDetail}

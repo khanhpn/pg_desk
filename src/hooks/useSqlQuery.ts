@@ -135,7 +135,7 @@ const createInitialQueryWorkspaceState = (): {
   };
 };
 
-export const useSqlQuery = () => {
+export const useSqlQuery = (connectionId: string | null) => {
   const [initialWorkspace] = useState(createInitialQueryWorkspaceState);
   const nextTabIndexRef = useRef(initialWorkspace.nextTabIndex);
   const [tabs, setTabs] = useState<QueryTab[]>(initialWorkspace.tabs);
@@ -215,7 +215,7 @@ export const useSqlQuery = () => {
       }));
 
       try {
-        const result = await window.pgdesk.query.run(nextSql);
+        const result = await window.pgdesk.query.run(nextSql, connectionId);
 
         updateTab(tabId, (tab) => ({
           ...tab,
@@ -238,7 +238,7 @@ export const useSqlQuery = () => {
         }));
       }
     },
-    [updateTab],
+    [connectionId, updateTab],
   );
 
   const handleRunQuery = useCallback(async (): Promise<void> => {

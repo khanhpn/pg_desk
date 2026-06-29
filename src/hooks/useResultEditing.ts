@@ -18,7 +18,10 @@ const parseCellKey = (
   };
 };
 
-export const useResultEditing = (queryResult: QueryRunResult | null) => {
+export const useResultEditing = (
+  queryResult: QueryRunResult | null,
+  connectionId: string | null,
+) => {
   const [draftRows, setDraftRows] = useState<Record<string, unknown>[]>([]);
   const [dirtyCells, setDirtyCells] = useState<DirtyCells>({});
   const [saveMessage, setSaveMessage] = useState("");
@@ -111,6 +114,7 @@ export const useResultEditing = (queryResult: QueryRunResult | null) => {
         }
 
         const result = await window.pgdesk.query.updateCell({
+          connectionId,
           tableOid: columnMetadata.tableOid,
           columnName: columnMetadata.columnName,
           primaryKeys: buildPrimaryKeys(row, columnMetadata.tableOid),
@@ -140,6 +144,7 @@ export const useResultEditing = (queryResult: QueryRunResult | null) => {
     draftRows,
     hasDirtyCells,
     isSaving,
+    connectionId,
     queryResult,
   ]);
 

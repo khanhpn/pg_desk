@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 type PgConnectionConfig = {
+  id?: string;
+  name?: string;
   host: string;
   port: number;
   database: string;
@@ -15,6 +17,17 @@ type PgConnectionTestResult = {
   database?: string;
   user?: string;
   serverVersion?: string;
+};
+
+type PgConnectionProfile = PgConnectionConfig & {
+  id: string;
+  name: string;
+};
+
+type PgConnectionListResult = {
+  profiles: PgConnectionProfile[];
+  activeConnectionId: string | null;
+  connectedConnectionIds: string[];
 };
 
 type QueryRunResult = {
@@ -42,6 +55,7 @@ type QueryColumnMetadata = {
 };
 
 type QueryCellUpdatePayload = {
+  connectionId?: string | null;
   tableOid: number;
   columnName: string;
   primaryKeys: Array<{
@@ -178,25 +192,41 @@ type PgDeskApi = {
   connection: {
     test: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
     connect: (config: PgConnectionConfig) => Promise<PgConnectionTestResult>;
-    disconnect: () => Promise<{ ok: boolean; message: string }>;
+    disconnect: (
+      connectionId?: string | null,
+    ) => Promise<{ ok: boolean; message: string }>;
+    list: () => Promise<PgConnectionListResult>;
+    deleteProfile: (
+      connectionId: string,
+    ) => Promise<{ ok: boolean; message: string }>;
+    setActive: (
+      connectionId: string,
+    ) => Promise<{ ok: boolean; message: string }>;
     getProfile: () => Promise<PgConnectionConfig | null>;
   };
 
   query: {
-    run: (sql: string) => Promise<QueryRunResult>;
+    run: (
+      sql: string,
+      connectionId?: string | null,
+    ) => Promise<QueryRunResult>;
     updateCell: (
       payload: QueryCellUpdatePayload,
     ) => Promise<QueryCellUpdateResult>;
   };
 
   metadata: {
-    explorer: () => Promise<PgDatabaseExplorerResult>;
+    explorer: (
+      connectionId?: string | null,
+    ) => Promise<PgDatabaseExplorerResult>;
     tableDetail: (
       schema: string,
       table: string,
+      connectionId?: string | null,
     ) => Promise<PgTableDetailResult>;
     applyTableChange: (
       payload: PgTableChangePayload,
+      connectionId?: string | null,
     ) => Promise<PgTableChangeResult>;
   };
 

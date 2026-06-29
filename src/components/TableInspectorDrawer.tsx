@@ -6,6 +6,7 @@ import type {
 } from "@/types/metadata";
 
 type TableInspectorDrawerProps = {
+  connectionId: string | null;
   relation: PgRelationInfo | null;
   tableDetail: PgTableDetail | null;
   isLoading: boolean;
@@ -86,6 +87,7 @@ const buildPreviewSql = (
 
 export const TableInspectorDrawer = ({
   relation,
+  connectionId,
   tableDetail,
   isLoading,
   message,
@@ -168,6 +170,11 @@ export const TableInspectorDrawer = ({
     return buildPreviewSql(editPayload);
   }, [editPayload]);
   const applySchemaChange = async (): Promise<void> => {
+    if (!connectionId) {
+      setEditMessage("Select and connect a database before applying changes.");
+      return;
+    }
+
     if (!editPayload || !previewSql) {
       setEditMessage("Complete the form before applying changes.");
       return;
@@ -183,7 +190,10 @@ export const TableInspectorDrawer = ({
     setEditMessage("Applying schema change...");
 
     try {
-      const result = await window.pgdesk.metadata.applyTableChange(editPayload);
+      const result = await window.pgdesk.metadata.applyTableChange(
+        editPayload,
+        connectionId,
+      );
 
       if (result.ok) {
         setEditMessage(result.message);

@@ -13,6 +13,127 @@
   align-items: flex-start;
 }
 
+.connection-list-card {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.connection-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.connection-list-title {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.connection-list-subtitle {
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.connection-add-button {
+  width: 25px;
+  height: 25px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-0);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.connection-add-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.connection-profile-list {
+  display: grid;
+  gap: 5px;
+}
+
+.connection-profile-row {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(24, 33, 45, 0.38);
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+}
+
+.connection-profile-row.active {
+  border-color: rgba(79, 179, 165, 0.42);
+  background:
+    linear-gradient(90deg, rgba(79, 179, 165, 0.16), rgba(122, 162, 247, 0.06)),
+    var(--surface-0);
+}
+
+.connection-profile-main {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.connection-profile-text {
+  min-width: 0;
+  display: grid;
+}
+
+.connection-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.connection-mini-button {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-0);
+  color: var(--text-subtle);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.connection-mini-button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.connection-mini-button.primary {
+  border-color: rgba(79, 179, 165, 0.38);
+  color: var(--accent);
+}
+
+.connection-mini-button.danger {
+  border-color: rgba(240, 127, 134, 0.32);
+  color: #ffb4b8;
+}
+
+.connection-empty-state {
+  min-height: 34px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  font-size: 11px;
+}
+
 .connection-status {
   width: 7px;
   height: 7px;

@@ -1,87 +1,159 @@
-import { useCallback, useMemo } from "react";
-import type { PgConnectionForm } from "@/types/connection";
+import { useCallback } from "react";
+import type { PgConnectionProfile } from "@/types/connection";
 
 type ConnectionSummaryCardProps = {
-  connectionForm: PgConnectionForm;
+  connectionProfiles: PgConnectionProfile[];
+  activeConnectionId: string | null;
+  connectedConnectionIds: string[];
   connectionMessage: string;
-  isConnected: boolean;
-  hasSavedProfile: boolean;
-  openConnectionModal: () => void;
-  handleDisconnect: () => Promise<void>;
+  openNewConnectionModal: () => void;
+  editConnectionProfile: (profile: PgConnectionProfile) => void;
+  connectConnectionProfile: (profile: PgConnectionProfile) => Promise<void>;
+  selectConnectionProfile: (connectionId: string) => Promise<void>;
+  deleteConnectionProfile: (connectionId: string) => Promise<void>;
+  handleDisconnect: (connectionId?: string | null) => Promise<void>;
 };
 
 export const ConnectionSummaryCard = ({
-  connectionForm,
+  connectionProfiles,
+  activeConnectionId,
+  connectedConnectionIds,
   connectionMessage,
-  isConnected,
-  hasSavedProfile,
-  openConnectionModal,
+  openNewConnectionModal,
+  editConnectionProfile,
+  connectConnectionProfile,
+  selectConnectionProfile,
+  deleteConnectionProfile,
   handleDisconnect,
 }: ConnectionSummaryCardProps) => {
-  const title = useMemo(() => {
-    if (isConnected) {
-      return "Connected";
-    }
+  const handleDelete = useCallback(
+    (profile: PgConnectionProfile): void => {
+      const confirmed = window.confirm(`Delete connection "${profile.name}"?`);
 
-    if (hasSavedProfile) {
-      return `${connectionForm.user}@${connectionForm.host}`;
-    }
-
-    return "Not connected";
-  }, [connectionForm.host, connectionForm.user, hasSavedProfile, isConnected]);
-  const actionText = useMemo(() => {
-    return isConnected ? "Edit" : "Connect";
-  }, [isConnected]);
-  const connectionMessageClassName = useMemo(() => {
-    return connectionMessage.startsWith("Error")
-      ? "connection-message error"
-      : "connection-message";
-  }, [connectionMessage]);
-  const handleDisconnectClick = useCallback((): void => {
-    void handleDisconnect();
-  }, [handleDisconnect]);
+      if (confirmed) {
+        void deleteConnectionProfile(profile.id);
+      }
+    },
+    [deleteConnectionProfile],
+  );
 
   return (
-    <div className="connection-card connection-summary-card">
-      <div
-        className={isConnected ? "connection-status" : "connection-status off"}
-      />
-
-      <div className="connection-summary-content">
-        <div className="connection-summary-main-row">
-          <div className="connection-summary-text">
-            <div className="connection-name">{title}</div>
-
-            {hasSavedProfile && (
-              <div className="connection-meta">
-                database: {connectionForm.database}
-              </div>
-            )}
+    <div className="connection-card connection-list-card">
+      <div className="connection-list-header">
+        <div>
+          <div className="connection-list-title">Connections</div>
+          <div className="connection-list-subtitle">
+            {connectionProfiles.length} saved profile
+            {connectionProfiles.length === 1 ? "" : "s"}
           </div>
-
-          <button
-            className="connection-edit-button"
-            type="button"
-            onClick={openConnectionModal}
-          >
-            {actionText}
-          </button>
         </div>
 
-        {connectionMessage && (
-          <div className={connectionMessageClassName}>{connectionMessage}</div>
+        <button
+          className="connection-add-button"
+          type="button"
+          onClick={openNewConnectionModal}
+        >
+          +
+        </button>
+      </div>
+
+      <div className="connection-profile-list">
+        {connectionProfiles.length === 0 && (
+          <div className="connection-empty-state">No connections yet.</div>
         )}
 
-        {isConnected && (
-          <button
-            className="disconnect-button"
-            type="button"
-            onClick={handleDisconnectClick}
-          >
-            Disconnect
-          </button>
-        )}
+        {connectionProfiles.map((profile) => {
+          const isActive = profile.id === activeConnectionId;
+          const isConnected = connectedConnectionIds.includes(profile.id);
+
+          return (
+            <div
+              className={
+                isActive
+                  ? "connection-profile-row active"
+                  : "connection-profile-row"
+              }
+              key={profile.id}
+            >
+              <button
+                className="connection-profile-main"
+                type="button"
+                onClick={() => {
+                  void selectConnectionProfile(profile.id);
+                }}
+              >
+                <span
+                  className={
+                    isConnected ? "connection-status" : "connection-status off"
+                  }
+                />
+                <span className="connection-profile-text">
+                  <span className="connection-name">{profile.name}</span>
+                  <span className="connection-meta">
+                    {profile.user}@{profile.host}/{profile.database}
+                  </span>
+                </span>
+              </button>
+
+              <div className="connection-profile-actions">
+                <button
+                  className="connection-mini-button"
+                  type="button"
+                  onClick={() => {
+                    editConnectionProfile(profile);
+                  }}
+                >
+                  Edit
+                </button>
+                {isConnected ? (
+                  <button
+                    className="connection-mini-button danger"
+                    type="button"
+                    onClick={() => {
+                      void handleDisconnect(profile.id);
+                    }}
+                  >
+                    Off
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      className="connection-mini-button primary"
+                      type="button"
+                      onClick={() => {
+                        void connectConnectionProfile(profile);
+                      }}
+                    >
+                      Connect
+                    </button>
+                    <button
+                      className="connection-mini-button danger"
+                      type="button"
+                      onClick={() => {
+                        handleDelete(profile);
+                      }}
+                    >
+                      Del
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {connectionMessage && (
+        <div
+          className={
+            connectionMessage.startsWith("Error")
+              ? "connection-message error"
+              : "connection-message"
+          }
+        >
+          {connectionMessage}
+        </div>
+      )}
     </div>
   );
 };
