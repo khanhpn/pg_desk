@@ -51,8 +51,18 @@ jobs:
           test -n "$APP_ASARS"
           for APP_ASAR in $APP_ASARS; do
             echo "Checking $APP_ASAR"
-            pnpm exec asar list "$APP_ASAR" | grep -F '/node_modules/pg-types/index.js'
-            pnpm exec asar list "$APP_ASAR" | grep -F '/node_modules/xtend/mutable.js'
+            ASAR_LIST="$RUNNER_TEMP/$(basename "$(dirname "$(dirname "$(dirname "$APP_ASAR")")")")-asar-files.txt"
+            pnpm exec asar list "$APP_ASAR" > "$ASAR_LIST"
+            grep -E '(^|/)node_modules/pg-types/index\.js$' "$ASAR_LIST" || {
+              echo "Missing pg-types in $APP_ASAR"
+              grep -E '(^|/)node_modules/(pg|pg-types|postgres-interval|xtend)/' "$ASAR_LIST" | head -50
+              exit 1
+            }
+            grep -E '(^|/)node_modules/xtend/mutable\.js$' "$ASAR_LIST" || {
+              echo "Missing xtend/mutable in $APP_ASAR"
+              grep -E '(^|/)node_modules/(pg|pg-types|postgres-interval|xtend)/' "$ASAR_LIST" | head -50
+              exit 1
+            }
           done
 
       - name: Upload macOS artifact
