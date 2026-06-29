@@ -44,6 +44,15 @@
   background: var(--surface-2);
 }
 
+.toolbar-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.toolbar-button:disabled:hover {
+  background: var(--surface-0);
+}
+
 .toolbar-separator {
   width: 1px;
   height: 20px;

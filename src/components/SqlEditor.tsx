@@ -8,6 +8,7 @@ type SqlEditorProps = {
   sql: string;
   setSql: (sql: string) => void;
   handleRunQuery: () => Promise<void>;
+  saveActiveTab: () => void;
 };
 
 const pgdeskEditorLayout = EditorView.theme(
@@ -78,8 +79,9 @@ export const SqlEditor = ({
   sql,
   setSql,
   handleRunQuery,
+  saveActiveTab,
 }: SqlEditorProps): JSX.Element => {
-  const runQueryKeymap = useMemo(() => {
+  const editorKeymap = useMemo(() => {
     return keymap.of([
       {
         key: "Mod-Enter",
@@ -88,11 +90,18 @@ export const SqlEditor = ({
           return true;
         },
       },
+      {
+        key: "Mod-s",
+        run: (): boolean => {
+          saveActiveTab();
+          return true;
+        },
+      },
     ]);
-  }, [handleRunQuery]);
+  }, [handleRunQuery, saveActiveTab]);
   const extensions = useMemo(() => {
-    return [sqlLanguage(), pgdeskEditorLayout, runQueryKeymap];
-  }, [runQueryKeymap]);
+    return [sqlLanguage(), pgdeskEditorLayout, editorKeymap];
+  }, [editorKeymap]);
   const handleEditorChange = useCallback(
     (value: string): void => {
       setSql(value);

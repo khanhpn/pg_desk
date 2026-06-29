@@ -46,6 +46,14 @@ const App = () => {
     queryResult,
     queryMessage,
     isRunningQuery,
+    tabs,
+    activeTabId,
+    isActiveTabDirty,
+    createTab,
+    selectTab,
+    closeTab,
+    saveActiveTab,
+    formatActiveTabSql,
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery();
@@ -108,15 +116,32 @@ const App = () => {
       />
 
       <main className="workspace">
-        <Topbar ipcMessage={ipcMessage} handlePing={handlePing} />
+        <Topbar
+          ipcMessage={ipcMessage}
+          handlePing={handlePing}
+          tabs={tabs}
+          activeTabId={activeTabId}
+          canCreateTab={isConnected}
+          createTab={createTab}
+          selectTab={selectTab}
+          closeTab={closeTab}
+        />
 
         <QueryToolbar
           isRunningQuery={isRunningQuery}
+          isActiveTabDirty={isActiveTabDirty}
           queryMessage={queryMessage}
           handleRunQuery={handleRunQuery}
+          formatActiveTabSql={formatActiveTabSql}
+          saveActiveTab={saveActiveTab}
         />
 
-        <SqlEditor sql={sql} setSql={setSql} handleRunQuery={handleRunQuery} />
+        <SqlEditor
+          sql={sql}
+          setSql={setSql}
+          handleRunQuery={handleRunQuery}
+          saveActiveTab={saveActiveTab}
+        />
 
         <div
           className="result-resize-handle"
