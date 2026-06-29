@@ -1,5 +1,5 @@
 appId: com.pgdesk.app
-productName: pgdesk
+productName: PGDesk
 
 directories:
   output: dist-release
