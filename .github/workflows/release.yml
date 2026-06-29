@@ -45,6 +45,16 @@ jobs:
           test -n "$(find dist-release -maxdepth 1 -name '*-mac-x64.*' -print -quit)"
           test -n "$(find dist-release -maxdepth 1 -name '*-mac-arm64.*' -print -quit)"
 
+      - name: Verify packaged runtime dependencies
+        run: |
+          APP_ASARS="$(find dist-release -path '*/PGDesk.app/Contents/Resources/app.asar' -print)"
+          test -n "$APP_ASARS"
+          for APP_ASAR in $APP_ASARS; do
+            echo "Checking $APP_ASAR"
+            pnpm exec asar list "$APP_ASAR" | grep -F '/node_modules/pg-types/index.js'
+            pnpm exec asar list "$APP_ASAR" | grep -F '/node_modules/xtend/mutable.js'
+          done
+
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:

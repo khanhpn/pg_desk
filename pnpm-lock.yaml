@@ -68,6 +68,9 @@ importers:
       split2:
         specifier: 4.2.0
         version: 4.2.0
+      xtend:
+        specifier: 4.0.2
+        version: 4.0.2
     devDependencies:
       '@types/pg':
         specifier: ^8.20.0
