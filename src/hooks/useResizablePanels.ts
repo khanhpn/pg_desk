@@ -9,7 +9,7 @@ const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 460;
 const SIDEBAR_DEFAULT_WIDTH = 280;
 const RESULT_PANEL_MIN_HEIGHT = 180;
-const RESULT_PANEL_MAX_HEIGHT = 560;
+const RESULT_PANEL_TOP_RESERVE = 132;
 const RESULT_PANEL_DEFAULT_HEIGHT = 260;
 
 export const useResizablePanels = () => {
@@ -64,11 +64,16 @@ export const useResizablePanels = () => {
       const startHeight = resultPanelHeight;
 
       const handlePointerMove = (moveEvent: PointerEvent): void => {
+        const maxResultPanelHeight = Math.max(
+          RESULT_PANEL_MIN_HEIGHT,
+          window.innerHeight - RESULT_PANEL_TOP_RESERVE,
+        );
+
         setResultPanelHeight(
           clamp(
             startHeight + startY - moveEvent.clientY,
             RESULT_PANEL_MIN_HEIGHT,
-            RESULT_PANEL_MAX_HEIGHT,
+            maxResultPanelHeight,
           ),
         );
       };

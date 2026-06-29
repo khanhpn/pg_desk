@@ -1,5 +1,5 @@
 .editor-panel {
-  min-height: 260px;
+  min-height: 120px;
   flex: 1;
   display: flex;
   background: var(--editor-bg);

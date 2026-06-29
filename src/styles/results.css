@@ -81,7 +81,8 @@
 }
 
 .result-grid {
-  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
 }
@@ -98,6 +99,8 @@
   border-right: 1px solid var(--border-soft);
   padding: 7px 10px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .result-grid td {
@@ -110,6 +113,8 @@
 
 .result-grid td.readonly-cell {
   padding: 7px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .result-grid tbody tr:hover {
@@ -118,10 +123,47 @@
 
 .result-grid th:first-child,
 .result-grid td:first-child {
-  width: 42px;
   color: var(--text-faint);
   text-align: right;
   background: var(--editor-gutter-bg);
+}
+
+.result-grid th:not(:first-child) {
+  padding-right: 16px;
+}
+
+.result-column-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 2;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.result-column-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 1px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.14s ease;
+}
+
+.result-column-resize-handle:hover::after,
+.result-column-resize-handle:active::after {
+  background: var(--accent);
 }
 
 .null-value {
@@ -145,7 +187,7 @@
 
 .result-cell-input {
   width: 100%;
-  min-width: 120px;
+  min-width: 0;
   height: 31px;
   border: 0;
   background: transparent;
