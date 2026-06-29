@@ -55,6 +55,10 @@ const openExternalUrl = (url: string): void => {
   void shell.openExternal(url);
 };
 
+const handleCheckForUpdates = (): void => {
+  void checkForAppUpdates(true);
+};
+
 const buildApplicationMenu = (): Menu => {
   const appMenu =
     process.platform === "darwin"
@@ -132,6 +136,11 @@ const buildApplicationMenu = (): Menu => {
     {
       label: "Help",
       submenu: [
+        {
+          label: "Check for Updates...",
+          click: handleCheckForUpdates,
+        },
+        { type: "separator" as const },
         {
           label: "PGDesk Documentation",
           click: () => {

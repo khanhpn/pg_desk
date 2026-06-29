@@ -8,6 +8,11 @@ const visibleStatuses = new Set<UpdateStatusPayload["status"]>([
   "error",
 ]);
 
+const manualVisibleStatuses = new Set<UpdateStatusPayload["status"]>([
+  "checking",
+  "not-available",
+]);
+
 export const useAppUpdate = () => {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload | null>(
     null,
@@ -36,7 +41,10 @@ export const useAppUpdate = () => {
     const unsubscribe = window.pgdesk.update.onStatus((payload) => {
       setUpdateStatus(payload);
 
-      if (visibleStatuses.has(payload.status)) {
+      if (
+        visibleStatuses.has(payload.status) ||
+        (payload.isManual && manualVisibleStatuses.has(payload.status))
+      ) {
         setIsUpdateToastVisible(true);
         return;
       }

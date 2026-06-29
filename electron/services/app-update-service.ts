@@ -14,11 +14,13 @@ type UpdateStatusPayload = {
   message: string;
   version?: string;
   percent?: number;
+  isManual?: boolean;
 };
 
 const { autoUpdater } = electronUpdater;
 
 let mainWindow: BrowserWindow | null = null;
+let isManualUpdateCheck = false;
 
 const getAutoUpdater = (): AppUpdater => {
   return autoUpdater;
@@ -54,6 +56,7 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
     sendUpdateStatus({
       status: "checking",
       message: "Checking for updates...",
+      isManual: isManualUpdateCheck,
     });
   });
 
@@ -62,14 +65,20 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
       status: "available",
       message: `PGDesk ${info.version} is available.`,
       version: info.version,
+      isManual: isManualUpdateCheck,
     });
+
+    isManualUpdateCheck = false;
   });
 
   updater.on("update-not-available", () => {
     sendUpdateStatus({
       status: "not-available",
       message: "PGDesk is up to date.",
+      isManual: isManualUpdateCheck,
     });
+
+    isManualUpdateCheck = false;
   });
 
   updater.on("download-progress", (progress) => {
@@ -96,12 +105,26 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
     sendUpdateStatus({
       status: "error",
       message: formatUpdateErrorMessage(error),
+      isManual: isManualUpdateCheck,
     });
+
+    isManualUpdateCheck = false;
   });
 };
 
-export const checkForAppUpdates = async (): Promise<void> => {
+export const checkForAppUpdates = async (isManual = false): Promise<void> => {
+  isManualUpdateCheck = isManual;
+
   if (!app.isPackaged) {
+    if (isManual) {
+      sendUpdateStatus({
+        status: "not-available",
+        message: "Updates can only be checked in the packaged app.",
+        isManual: true,
+      });
+    }
+
+    isManualUpdateCheck = false;
     return;
   }
 

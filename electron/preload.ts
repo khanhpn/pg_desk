@@ -89,6 +89,7 @@ type UpdateStatusPayload = {
   message: string;
   version?: string;
   percent?: number;
+  isManual?: boolean;
 };
 
 const pgdeskApi = {

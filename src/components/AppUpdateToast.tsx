@@ -14,15 +14,17 @@ export const AppUpdateToast = ({
   handleDownloadUpdate,
   closeUpdateToast,
 }: AppUpdateToastProps) => {
-  const { isAvailable, isDownloading, isDownloaded, isError } = useMemo(
-    () => ({
-      isAvailable: updateStatus?.status === "available",
-      isDownloading: updateStatus?.status === "downloading",
-      isDownloaded: updateStatus?.status === "downloaded",
-      isError: updateStatus?.status === "error",
-    }),
-    [updateStatus?.status],
-  );
+  const { isAvailable, isChecking, isDownloading, isDownloaded, isError } =
+    useMemo(
+      () => ({
+        isAvailable: updateStatus?.status === "available",
+        isChecking: updateStatus?.status === "checking",
+        isDownloading: updateStatus?.status === "downloading",
+        isDownloaded: updateStatus?.status === "downloaded",
+        isError: updateStatus?.status === "error",
+      }),
+      [updateStatus?.status],
+    );
   const progressWidth = useMemo(() => {
     return `${Math.round(updateStatus?.percent ?? 0)}%`;
   }, [updateStatus?.percent]);
@@ -45,7 +47,7 @@ export const AppUpdateToast = ({
           <div className="update-toast-message">{updateStatus.message}</div>
         </div>
 
-        {!isDownloading && !isDownloaded && (
+        {!isChecking && !isDownloading && !isDownloaded && (
           <button
             className="update-toast-close"
             type="button"
@@ -68,6 +70,12 @@ export const AppUpdateToast = ({
       )}
 
       <div className="update-toast-actions">
+        {isChecking && (
+          <button className="update-primary-button" type="button" disabled>
+            Checking...
+          </button>
+        )}
+
         {isAvailable && (
           <button
             className="update-primary-button"
