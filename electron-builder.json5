@@ -4,20 +4,17 @@
   appId: "com.pgdesk.app",
   asar: true,
   productName: "PGDesk",
+  compression: "maximum",
   directories: {
     output: "release/${version}",
     buildResources: "build",
   },
-  files: ["dist", "dist-electron"],
+  files: ["dist", "dist-electron", "!**/*.map"],
   mac: {
     icon: "build/icon.png",
     target: [
       {
         target: "dmg",
-        arch: ["x64", "arm64"],
-      },
-      {
-        target: "zip",
         arch: ["x64", "arm64"],
       },
     ],

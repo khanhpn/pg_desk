@@ -32,8 +32,8 @@ pnpm dev
 | ------------------------ | -------------------------------------------------------------- |
 | `pnpm dev`               | Run the app with hot reload                                    |
 | `pnpm build`             | Type-check, bundle, and package the app                        |
-| `pnpm release:mac`       | Build macOS DMG and ZIP artifacts for Apple Silicon and Intel  |
-| `pnpm release:mac:intel` | Build macOS DMG and ZIP artifacts for Intel Macs only          |
+| `pnpm release:mac`       | Build macOS DMG artifacts for Apple Silicon and Intel          |
+| `pnpm release:mac:intel` | Build macOS DMG artifacts for Intel Macs only                  |
 | `pnpm lint`              | Run ESLint                                                     |
 | `pnpm lint:fix`          | Run ESLint with auto-fix                                       |
 | `pnpm format`            | Format code with Prettier                                      |

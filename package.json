@@ -3,7 +3,7 @@
   "description": "A lightweight PostgreSQL desktop client",
   "author": "Khanh Pham",
   "private": true,
-  "version": "0.1.9",
+  "version": "0.1.9.1",
   "type": "module",
   "engines": {
     "node": "24.15.0"
@@ -14,8 +14,8 @@
     "prebuild": "pnpm run docs:sync-version",
     "build": "tsc && vite build",
     "docs:sync-version": "node scripts/sync-docs-version.mjs",
-    "release:mac": "pnpm run build && electron-builder --mac dmg zip --x64 --arm64 --publish never",
-    "release:mac:intel": "pnpm run build && electron-builder --mac dmg zip --x64 --publish never",
+    "release:mac": "pnpm run build && electron-builder --mac dmg --x64 --arm64 --publish never",
+    "release:mac:intel": "pnpm run build && electron-builder --mac dmg --x64 --publish never",
     "release:win": "pnpm run build && electron-builder --win nsis --publish never",
     "release": "pnpm run build && electron-builder --publish never",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

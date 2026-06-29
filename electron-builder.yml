@@ -1,5 +1,6 @@
 appId: com.pgdesk.app
 productName: PGDesk
+compression: maximum
 
 directories:
   output: dist-release
@@ -8,14 +9,11 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - package.json
+  - "!**/*.map"
 
 mac:
   target:
     - target: dmg
-      arch:
-        - x64
-        - arm64
-    - target: zip
       arch:
         - x64
         - arm64

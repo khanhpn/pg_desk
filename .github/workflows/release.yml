@@ -51,7 +51,6 @@ jobs:
           name: pgdesk-macos-x64-arm64
           path: |
             dist-release/*.dmg
-            dist-release/*.zip
           if-no-files-found: error
 
   build-windows:
