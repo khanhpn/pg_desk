@@ -28,6 +28,17 @@ const sendUpdateStatus = (payload: UpdateStatusPayload): void => {
   mainWindow?.webContents.send("update:status", payload);
 };
 
+const formatUpdateErrorMessage = (error: Error): string => {
+  if (
+    error.message.includes("latest-mac.yml") ||
+    error.message.includes("latest.yml")
+  ) {
+    return "Update metadata is missing from the latest GitHub release. Please download the latest installer manually.";
+  }
+
+  return error.message || "Update failed";
+};
+
 export const registerAppUpdater = (window: BrowserWindow): void => {
   mainWindow = window;
 
@@ -84,7 +95,7 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
   updater.on("error", (error) => {
     sendUpdateStatus({
       status: "error",
-      message: error.message || "Update failed",
+      message: formatUpdateErrorMessage(error),
     });
   });
 };

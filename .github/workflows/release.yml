@@ -70,6 +70,8 @@ jobs:
           name: pgdesk-macos-x64-arm64
           path: |
             dist-release/*.dmg
+            dist-release/*.dmg.blockmap
+            dist-release/latest-mac.yml
           if-no-files-found: error
 
   build-windows:
@@ -109,6 +111,8 @@ jobs:
           path: |
             dist-release/*.exe
             dist-release/*.msi
+            dist-release/*.exe.blockmap
+            dist-release/latest.yml
           if-no-files-found: error
 
   create-release:

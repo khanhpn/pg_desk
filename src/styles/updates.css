@@ -29,6 +29,9 @@
   color: var(--text-subtle);
   font-size: 12px;
   line-height: 1.5;
+  max-height: 120px;
+  overflow: auto;
+  overflow-wrap: anywhere;
 }
 
 .update-toast-close {
