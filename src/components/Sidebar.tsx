@@ -29,6 +29,11 @@ type SidebarProps = {
   refreshExplorer: () => Promise<void>;
   selectedRelationKey: string | null;
   handleOpenRelation: (relation: PgRelationInfo) => Promise<void>;
+  openTableContextMenu: (
+    relation: PgRelationInfo,
+    x: number,
+    y: number,
+  ) => void;
 };
 
 export const Sidebar = ({
@@ -51,6 +56,7 @@ export const Sidebar = ({
   refreshExplorer,
   selectedRelationKey,
   handleOpenRelation,
+  openTableContextMenu,
 }: SidebarProps) => {
   const sidebarStyle = useMemo(
     () =>
@@ -93,6 +99,7 @@ export const Sidebar = ({
         refreshExplorer={refreshExplorer}
         selectedRelationKey={selectedRelationKey}
         handleOpenRelation={handleOpenRelation}
+        openTableContextMenu={openTableContextMenu}
       />
 
       <ConnectionModal

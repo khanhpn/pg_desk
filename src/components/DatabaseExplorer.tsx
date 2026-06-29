@@ -9,6 +9,11 @@ type DatabaseExplorerProps = {
   refreshExplorer: () => Promise<void>;
   selectedRelationKey: string | null;
   handleOpenRelation: (relation: PgRelationInfo) => Promise<void>;
+  openTableContextMenu: (
+    relation: PgRelationInfo,
+    x: number,
+    y: number,
+  ) => void;
 };
 
 const buildRelationKey = (relation: PgRelationInfo): string => {
@@ -22,6 +27,7 @@ export const DatabaseExplorer = ({
   refreshExplorer,
   selectedRelationKey,
   handleOpenRelation,
+  openTableContextMenu,
 }: DatabaseExplorerProps) => {
   const { isSchemaExpanded, isGroupExpanded, toggleSchema, toggleGroup } =
     useDatabaseTreeState();
@@ -106,6 +112,14 @@ export const DatabaseExplorer = ({
                           key={relationKey}
                           onClick={() => {
                             void handleOpenRelation(table);
+                          }}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            openTableContextMenu(
+                              table,
+                              event.clientX,
+                              event.clientY,
+                            );
                           }}
                         >
                           <span className="tree-dot" />

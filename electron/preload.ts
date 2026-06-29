@@ -77,6 +77,80 @@ type PgDatabaseExplorerResult = {
   schemas: PgSchemaInfo[];
 };
 
+type PgTableColumnInfo = {
+  name: string;
+  ordinalPosition: number;
+  dataType: string;
+  isNullable: boolean;
+  defaultValue: string | null;
+  isPrimaryKey: boolean;
+  isForeignKey: boolean;
+  characterMaximumLength: number | null;
+  numericPrecision: number | null;
+  numericScale: number | null;
+};
+
+type PgTableForeignKeyInfo = {
+  name: string;
+  columns: string[];
+  referencedSchema: string;
+  referencedTable: string;
+  referencedColumns: string[];
+  updateRule: string;
+  deleteRule: string;
+};
+
+type PgTableIndexInfo = {
+  name: string;
+  definition: string;
+  isUnique: boolean;
+  isPrimary: boolean;
+};
+
+type PgTableDetail = {
+  schema: string;
+  name: string;
+  columns: PgTableColumnInfo[];
+  foreignKeys: PgTableForeignKeyInfo[];
+  indexes: PgTableIndexInfo[];
+};
+
+type PgTableDetailResult = {
+  ok: boolean;
+  message: string;
+  table: PgTableDetail | null;
+};
+
+type PgTableChangePayload =
+  | {
+      action: "add-column";
+      schema: string;
+      table: string;
+      columnName: string;
+      dataType: string;
+      isNullable: boolean;
+    }
+  | {
+      action: "rename-column";
+      schema: string;
+      table: string;
+      columnName: string;
+      newColumnName: string;
+    }
+  | {
+      action: "change-data-type";
+      schema: string;
+      table: string;
+      columnName: string;
+      dataType: string;
+    };
+
+type PgTableChangeResult = {
+  ok: boolean;
+  message: string;
+  sql: string;
+};
+
 type UpdateStatusPayload = {
   status:
     | "idle"
@@ -136,6 +210,19 @@ const pgdeskApi = {
   metadata: {
     explorer: (): Promise<PgDatabaseExplorerResult> => {
       return ipcRenderer.invoke("metadata:explorer");
+    },
+
+    tableDetail: (
+      schema: string,
+      table: string,
+    ): Promise<PgTableDetailResult> => {
+      return ipcRenderer.invoke("metadata:table-detail", { schema, table });
+    },
+
+    applyTableChange: (
+      payload: PgTableChangePayload,
+    ): Promise<PgTableChangeResult> => {
+      return ipcRenderer.invoke("metadata:apply-table-change", payload);
     },
   },
 

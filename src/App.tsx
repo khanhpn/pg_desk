@@ -9,6 +9,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { SqlEditor } from "@/components/SqlEditor";
 import { Topbar } from "@/components/Topbar";
 import { AppUpdateToast } from "@/components/AppUpdateToast";
+import { TableContextMenu } from "@/components/TableContextMenu";
+import { TableInspectorDrawer } from "@/components/TableInspectorDrawer";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 // imports hooks
@@ -17,6 +19,7 @@ import { useIpcPing } from "@/hooks/useIpcPing";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
 import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
 import { useResizablePanels } from "@/hooks/useResizablePanels";
+import { useTableInspector } from "@/hooks/useTableInspector";
 
 const App = () => {
   const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
@@ -75,6 +78,18 @@ const App = () => {
     handleSidebarResizeStart,
     handleResultPanelResizeStart,
   } = useResizablePanels();
+  const {
+    contextMenu,
+    selectedTable,
+    tableDetail,
+    isLoadingTableDetail,
+    tableDetailMessage,
+    openTableContextMenu,
+    closeTableContextMenu,
+    openTableInspector,
+    closeTableInspector,
+    refreshTableInspector,
+  } = useTableInspector();
 
   const handleSelectRelation = useCallback(
     async (relation: PgRelationInfo): Promise<void> => {
@@ -105,6 +120,7 @@ const App = () => {
         refreshExplorer={refreshExplorer}
         selectedRelationKey={selectedRelationKey}
         handleOpenRelation={handleSelectRelation}
+        openTableContextMenu={openTableContextMenu}
       />
 
       <div
@@ -163,6 +179,25 @@ const App = () => {
         isVisible={isUpdateToastVisible}
         handleDownloadUpdate={handleDownloadUpdate}
         closeUpdateToast={closeUpdateToast}
+      />
+
+      {contextMenu && (
+        <TableContextMenu
+          relation={contextMenu.relation}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          closeMenu={closeTableContextMenu}
+          openTableInspector={openTableInspector}
+        />
+      )}
+
+      <TableInspectorDrawer
+        relation={selectedTable}
+        tableDetail={tableDetail}
+        isLoading={isLoadingTableDetail}
+        message={tableDetailMessage}
+        closeDrawer={closeTableInspector}
+        refreshTableInspector={refreshTableInspector}
       />
     </div>
   );
