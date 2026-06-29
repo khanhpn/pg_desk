@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { registerAppIpc } from "@ipc/app-ipc";
@@ -10,8 +10,14 @@ import {
   registerAppUpdater,
 } from "@electron/services/app-update-service";
 import { registerUpdateIpc } from "@electron/ipc/update-ipc";
+import packageJson from "../package.json";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const APP_NAME = "PGDesk";
+const APP_DESCRIPTION = "A focused PostgreSQL desktop client for developers.";
+const APP_WEBSITE_URL = "https://khanhpn.github.io/pg_desk/";
+const APP_REPOSITORY_URL = "https://github.com/khanhpn/pg_desk";
+const COPYRIGHT = "Copyright © 2026 Khanh Pham";
 
 registerAppIpc();
 registerConnectionIpc();
@@ -33,8 +39,130 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 let win: BrowserWindow | null;
 const iconPath = path.join(process.env.VITE_PUBLIC, "pgdesk.png");
 
+app.setName(APP_NAME);
+app.setAboutPanelOptions({
+  applicationName: APP_NAME,
+  applicationVersion: packageJson.version,
+  version: packageJson.version,
+  copyright: COPYRIGHT,
+  credits: `${APP_DESCRIPTION}\n\nAuthor: ${packageJson.author}\nRepository: ${APP_REPOSITORY_URL}`,
+  authors: [packageJson.author],
+  website: APP_WEBSITE_URL,
+  iconPath,
+});
+
+const openExternalUrl = (url: string): void => {
+  void shell.openExternal(url);
+};
+
+const buildApplicationMenu = (): Menu => {
+  const appMenu =
+    process.platform === "darwin"
+      ? [
+          {
+            label: APP_NAME,
+            submenu: [
+              {
+                label: `About ${APP_NAME}`,
+                role: "about" as const,
+              },
+              { type: "separator" as const },
+              { role: "services" as const },
+              { type: "separator" as const },
+              { role: "hide" as const },
+              { role: "hideOthers" as const },
+              { role: "unhide" as const },
+              { type: "separator" as const },
+              {
+                label: `Quit ${APP_NAME}`,
+                accelerator: "Command+Q",
+                role: "quit" as const,
+              },
+            ],
+          },
+        ]
+      : [];
+
+  return Menu.buildFromTemplate([
+    ...appMenu,
+    {
+      label: "File",
+      submenu: [
+        process.platform === "darwin"
+          ? { role: "close" as const }
+          : { role: "quit" as const },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" as const },
+        { role: "redo" as const },
+        { type: "separator" as const },
+        { role: "cut" as const },
+        { role: "copy" as const },
+        { role: "paste" as const },
+        { role: "selectAll" as const },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" as const },
+        { role: "forceReload" as const },
+        { role: "toggleDevTools" as const },
+        { type: "separator" as const },
+        { role: "resetZoom" as const },
+        { role: "zoomIn" as const },
+        { role: "zoomOut" as const },
+        { type: "separator" as const },
+        { role: "togglefullscreen" as const },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" as const },
+        { role: "zoom" as const },
+        ...(process.platform === "darwin"
+          ? [{ type: "separator" as const }, { role: "front" as const }]
+          : [{ role: "close" as const }]),
+      ],
+    },
+    {
+      label: "Help",
+      submenu: [
+        {
+          label: "PGDesk Documentation",
+          click: () => {
+            openExternalUrl(APP_WEBSITE_URL);
+          },
+        },
+        {
+          label: "GitHub Repository",
+          click: () => {
+            openExternalUrl(APP_REPOSITORY_URL);
+          },
+        },
+        ...(process.platform === "darwin"
+          ? []
+          : [
+              { type: "separator" as const },
+              {
+                label: `About ${APP_NAME}`,
+                click: () => {
+                  app.showAboutPanel();
+                },
+              },
+            ]),
+      ],
+    },
+  ]);
+};
+
 function createWindow() {
   win = new BrowserWindow({
+    title: APP_NAME,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
@@ -81,4 +209,7 @@ if (process.platform === "darwin") {
   app.dock.setIcon(iconPath);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  Menu.setApplicationMenu(buildApplicationMenu());
+  createWindow();
+});

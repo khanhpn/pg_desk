@@ -1,13 +1,19 @@
 type QueryToolbarProps = {
   isRunningQuery: boolean;
+  isActiveTabDirty: boolean;
   queryMessage: string;
   handleRunQuery: () => Promise<void>;
+  formatActiveTabSql: () => void;
+  saveActiveTab: () => void;
 };
 
 export const QueryToolbar = ({
   isRunningQuery,
+  isActiveTabDirty,
   queryMessage,
   handleRunQuery,
+  formatActiveTabSql,
+  saveActiveTab,
 }: QueryToolbarProps): JSX.Element => {
   return (
     <section className="query-toolbar">
@@ -24,8 +30,21 @@ export const QueryToolbar = ({
         ■ Stop
       </button>
 
-      <button className="toolbar-button" type="button">
+      <button
+        className="toolbar-button"
+        onClick={formatActiveTabSql}
+        type="button"
+      >
         Format
+      </button>
+
+      <button
+        className="toolbar-button"
+        disabled={!isActiveTabDirty}
+        onClick={saveActiveTab}
+        type="button"
+      >
+        Save Tab
       </button>
 
       <div className="toolbar-separator" />
