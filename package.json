@@ -19,6 +19,8 @@
     "release:mac:intel": "pnpm run build && electron-builder --mac dmg --x64 --publish never",
     "release:win": "pnpm run build && electron-builder --win nsis --publish never",
     "release": "pnpm run build && electron-builder --publish never",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write .",
@@ -50,6 +52,8 @@
     "xtend": "4.0.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/pg": "^8.20.0",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
@@ -63,12 +67,14 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.4",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-plugin-electron": "^0.28.6",
-    "vite-plugin-electron-renderer": "^0.14.5"
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^1.6.1"
   },
   "main": "dist-electron/main.js",
   "lint-staged": {
