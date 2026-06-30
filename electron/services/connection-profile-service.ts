@@ -110,7 +110,9 @@ const readLegacyProfileList =
   async (): Promise<StoredConnectionProfileList | null> => {
     try {
       const content = await fs.readFile(getLegacyProfilePath(), "utf-8");
-      const legacyProfile = JSON.parse(content) as LegacyStoredConnectionProfile;
+      const legacyProfile = JSON.parse(
+        content,
+      ) as LegacyStoredConnectionProfile;
       const id = createConnectionId();
       const profile: StoredConnectionProfile = {
         id,
@@ -217,12 +219,14 @@ export const deleteConnectionProfile = async (
   });
   const activeConnectionId =
     list.activeConnectionId === connectionId
-      ? nextProfiles[0]?.id ?? null
+      ? (nextProfiles[0]?.id ?? null)
       : list.activeConnectionId;
 
   await writeRawProfileList({
     activeConnectionId,
-    profiles: nextProfiles.map((profile) => toStoredProfile(profile, profile.id)),
+    profiles: nextProfiles.map((profile) =>
+      toStoredProfile(profile, profile.id),
+    ),
   });
 };
 
@@ -240,6 +244,8 @@ export const setActiveConnectionProfile = async (
 
   await writeRawProfileList({
     activeConnectionId: connectionId,
-    profiles: list.profiles.map((profile) => toStoredProfile(profile, profile.id)),
+    profiles: list.profiles.map((profile) =>
+      toStoredProfile(profile, profile.id),
+    ),
   });
 };

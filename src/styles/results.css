@@ -1,6 +1,6 @@
 .result-panel {
   height: var(--result-panel-height, 260px);
-  min-height: 180px;
+  min-height: 300px;
   flex: 0 0 var(--result-panel-height, 260px);
   display: flex;
   flex-direction: column;
@@ -78,6 +78,7 @@
 .grid-wrap {
   flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .result-grid {
@@ -205,15 +206,23 @@
 }
 
 .empty-result {
-  padding: 14px;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
   color: var(--text-subtle);
-  font-size: 12px;
+  font-size: 13px;
+  text-align: center;
 }
 
 .query-error-message {
-  padding: 14px;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
+  text-align: center;
 }

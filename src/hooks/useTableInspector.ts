@@ -31,7 +31,9 @@ export const useTableInspector = (connectionId: string | null) => {
   const openTableInspector = useCallback(
     async (relation: PgRelationInfo): Promise<void> => {
       if (!connectionId) {
-        setTableDetailMessage("Select a connection before loading table details.");
+        setTableDetailMessage(
+          "Select a connection before loading table details.",
+        );
         return;
       }
 

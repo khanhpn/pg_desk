@@ -78,11 +78,14 @@ export const useConnectionTest = ({
     setIsConnectionModalOpen(true);
   }, []);
 
-  const editConnectionProfile = useCallback((profile: PgConnectionProfile): void => {
-    setConnectionForm(toConnectionForm(profile));
-    setConnectionMessage("");
-    setIsConnectionModalOpen(true);
-  }, []);
+  const editConnectionProfile = useCallback(
+    (profile: PgConnectionProfile): void => {
+      setConnectionForm(toConnectionForm(profile));
+      setConnectionMessage("");
+      setIsConnectionModalOpen(true);
+    },
+    [],
+  );
 
   const closeConnectionModal = useCallback((): void => {
     if (isTestingConnection) {
@@ -169,7 +172,9 @@ export const useConnectionTest = ({
   const handleDisconnect = useCallback(
     async (connectionId?: string | null): Promise<void> => {
       try {
-        await window.pgdesk.connection.disconnect(connectionId ?? activeConnectionId);
+        await window.pgdesk.connection.disconnect(
+          connectionId ?? activeConnectionId,
+        );
         await refreshConnections();
         setConnectionMessage("");
       } catch (error) {

@@ -94,7 +94,10 @@ const getSupportedDataType = (dataType: string): string => {
 };
 
 const buildTableChangeSql = (payload: PgTableChangePayload): string => {
-  const qualifiedTableName = getQualifiedTableName(payload.schema, payload.table);
+  const qualifiedTableName = getQualifiedTableName(
+    payload.schema,
+    payload.table,
+  );
 
   if (payload.action === "add-column") {
     const nullableClause = payload.isNullable ? "" : " not null";

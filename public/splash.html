@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PGDesk Loading</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --page: #141b24;
+        --surface: #1d2631;
+        --surface-soft: #243241;
+        --line: #334254;
+        --text: #edf4fb;
+        --muted: #94a3b8;
+        --accent: #4fb3a5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+      }
+
+      .splash {
+        width: 420px;
+        min-height: 310px;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 18px;
+        background:
+          radial-gradient(
+            circle at 50% 8%,
+            rgba(79, 179, 165, 0.18),
+            transparent 34%
+          ),
+          linear-gradient(145deg, #202b37 0%, var(--page) 100%);
+        box-shadow:
+          0 30px 90px rgba(0, 0, 0, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        -webkit-app-region: drag;
+      }
+
+      .splash-main {
+        display: grid;
+        place-items: center;
+        padding: 42px 44px 28px;
+        text-align: center;
+      }
+
+      .logo-wrap {
+        width: 94px;
+        height: 94px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 22px;
+        border: 1px solid rgba(79, 179, 165, 0.26);
+        border-radius: 24px;
+        background: rgba(12, 18, 27, 0.64);
+        box-shadow:
+          0 18px 36px rgba(0, 0, 0, 0.26),
+          0 0 0 8px rgba(79, 179, 165, 0.06);
+      }
+
+      .logo {
+        width: 66px;
+        height: 66px;
+        border-radius: 17px;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: 30px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      p {
+        max-width: 280px;
+        margin: 12px auto 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .splash-footer {
+        padding: 0 34px 30px;
+      }
+
+      .progress-track {
+        position: relative;
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.16);
+      }
+
+      .progress-bar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 42%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #42d0b8, #76e0d2);
+        box-shadow: 0 0 20px rgba(79, 179, 165, 0.48);
+        animation: loading 1.18s ease-in-out infinite;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        box-shadow: 0 0 16px rgba(79, 179, 165, 0.72);
+      }
+
+      @keyframes loading {
+        0% {
+          transform: translateX(-110%);
+        }
+
+        52% {
+          transform: translateX(86%);
+        }
+
+        100% {
+          transform: translateX(238%);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="splash" aria-label="PGDesk is loading">
+      <section class="splash-main">
+        <div>
+          <div class="logo-wrap">
+            <img class="logo" src="./pgdesk.png" alt="PGDesk logo" />
+          </div>
+          <h1>PGDesk</h1>
+          <p>Preparing your PostgreSQL workspace.</p>
+        </div>
+      </section>
+
+      <section class="splash-footer" aria-label="Loading progress">
+        <div class="progress-track">
+          <div class="progress-bar"></div>
+        </div>
+        <div class="status-row">
+          <span>Loading application</span>
+          <span class="pulse"></span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

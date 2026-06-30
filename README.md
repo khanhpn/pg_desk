@@ -8,12 +8,14 @@ query results, and backing up data.
 [Documentation](https://khanhpn.github.io/pg_desk/documentation.html) ·
 [Releases](https://github.com/khanhpn/pg_desk/releases/latest)
 
-![PgDesk preview](docs/assets/screenshot.png)
+![PgDesk workspace](docs/assets/app-workspace.png)
 
 ## What PgDesk Does
 
 - **Connection profiles** — save PostgreSQL connections with host, port,
   database, username, password, and optional SSL.
+- **Splash-first startup** — show a branded loading screen while the main
+  workspace stays hidden, then reveal the maximized app after it is ready.
 - **Schema explorer** — browse schemas, tables, and views in a collapsible tree
   sidebar.
 - **Multi-tab SQL editor** — create, close, save, and restore query tabs between
@@ -30,6 +32,16 @@ query results, and backing up data.
   restore from an existing backup.
 - **Auto updates** — desktop update status and download actions are surfaced in
   the app.
+
+## Screenshots
+
+| Workspace                                                | Connection and editor                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Clean PgDesk workspace](docs/assets/app-workspace.png) | ![PgDesk connection and SQL editor](docs/assets/screenshot.png) |
+
+The workspace screenshot is captured from the built Electron app with a clean
+temporary profile so project documentation does not include local connection
+data.
 
 ## Supported Platforms
 

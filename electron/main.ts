@@ -39,7 +39,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+let splashWindow: BrowserWindow | null;
+let splashShownAt = 0;
+const SPLASH_MIN_VISIBLE_MS = 1600;
 const iconPath = path.join(process.env.VITE_PUBLIC, "pgdesk.png");
+const splashPath = path.join(process.env.VITE_PUBLIC, "splash.html");
 
 app.setName(APP_NAME);
 app.setAboutPanelOptions({
@@ -171,16 +175,94 @@ const buildApplicationMenu = (): Menu => {
   ]);
 };
 
-function createWindow() {
+const closeSplashWindow = (afterClose?: () => void): void => {
+  const targetSplashWindow = splashWindow;
+
+  if (!targetSplashWindow || targetSplashWindow.isDestroyed()) {
+    splashWindow = null;
+    afterClose?.();
+    return;
+  }
+
+  const remainingVisibleMs = Math.max(
+    0,
+    SPLASH_MIN_VISIBLE_MS - (Date.now() - splashShownAt),
+  );
+
+  const closeWindow = (): void => {
+    if (targetSplashWindow.isDestroyed()) {
+      afterClose?.();
+      return;
+    }
+
+    if (afterClose) {
+      targetSplashWindow.once("closed", afterClose);
+    }
+
+    targetSplashWindow.close();
+
+    if (splashWindow === targetSplashWindow) {
+      splashWindow = null;
+    }
+  };
+
+  if (remainingVisibleMs > 0) {
+    setTimeout(closeWindow, remainingVisibleMs);
+    return;
+  }
+
+  closeWindow();
+};
+
+const createSplashWindow = (): void => {
+  splashWindow = new BrowserWindow({
+    width: 460,
+    height: 350,
+    title: `${APP_NAME} Loading`,
+    icon: iconPath,
+    frame: false,
+    resizable: false,
+    movable: true,
+    center: true,
+    show: false,
+    transparent: true,
+    alwaysOnTop: true,
+    fullscreenable: false,
+    webPreferences: {
+      sandbox: true,
+    },
+  });
+
+  splashWindow.once("ready-to-show", () => {
+    splashShownAt = Date.now();
+    splashWindow?.show();
+  });
+
+  splashWindow.on("closed", () => {
+    splashWindow = null;
+  });
+
+  void splashWindow.loadFile(splashPath);
+};
+
+const createWindow = (): void => {
   win = new BrowserWindow({
     title: APP_NAME,
     icon: iconPath,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
   });
 
   registerAppUpdater(win);
+
+  win.once("ready-to-show", () => {
+    closeSplashWindow(() => {
+      win?.maximize();
+      win?.show();
+    });
+  });
 
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
@@ -193,7 +275,7 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
-}
+};
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -222,5 +304,6 @@ if (process.platform === "darwin") {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(buildApplicationMenu());
+  createSplashWindow();
   createWindow();
 });
