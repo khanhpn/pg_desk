@@ -1,9 +1,9 @@
 {
-  "name": "pgdesk",
+  "name": "PgDesk",
   "description": "A lightweight PostgreSQL desktop client",
   "author": "Khanh Pham",
   "private": true,
-  "version": "0.1.20",
+  "version": "0.1.21",
   "type": "module",
   "engines": {
     "node": "24.15.0"

@@ -35,7 +35,7 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.20</span>
+              <span class="version-pill">v0.1.21</span>
               <span class="status-pill">PostgreSQL desktop client</span>
             </div>
 
@@ -90,8 +90,8 @@
 
             <dl class="quick-stats" aria-label="Project highlights">
               <div>
-                <dt>Runtime</dt>
-                <dd>Electron + React</dd>
+                <dt>Launch</dt>
+                <dd>Splash-first</dd>
               </div>
               <div>
                 <dt>Editor</dt>
@@ -112,7 +112,7 @@
               <strong>PgDesk workspace</strong>
             </div>
             <img
-              src="./assets/screenshot.png"
+              src="./assets/app-workspace.png"
               alt="PgDesk desktop app showing a PostgreSQL explorer, SQL editor, and result grid"
             />
           </figure>
@@ -122,6 +122,7 @@
       <section class="section section-tight">
         <div class="container logo-strip" aria-label="PgDesk capabilities">
           <span>Connection profiles</span>
+          <span>Professional splash screen</span>
           <span>Schema tree</span>
           <span>SQL formatter</span>
           <span>Editable results</span>
@@ -143,6 +144,15 @@
           <div class="feature-grid feature-grid-large">
             <article class="feature-card">
               <span class="feature-icon">01</span>
+              <h3>Splash-first startup</h3>
+              <p>
+                Show a branded loading screen while the hidden workspace
+                prepares, then reveal the maximized app only after it is ready.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <span class="feature-icon">02</span>
               <h3>Connection manager</h3>
               <p>
                 Save connection profiles with host, port, database, username,
@@ -151,7 +161,7 @@
             </article>
 
             <article class="feature-card">
-              <span class="feature-icon">02</span>
+              <span class="feature-icon">03</span>
               <h3>Database explorer</h3>
               <p>
                 Browse schemas, tables, and views in a collapsible tree with a
@@ -160,7 +170,7 @@
             </article>
 
             <article class="feature-card">
-              <span class="feature-icon">03</span>
+              <span class="feature-icon">04</span>
               <h3>Multi-tab SQL editor</h3>
               <p>
                 Create query tabs, save tab content, restore workspace state,
@@ -169,7 +179,7 @@
             </article>
 
             <article class="feature-card">
-              <span class="feature-icon">04</span>
+              <span class="feature-icon">05</span>
               <h3>Editable result grid</h3>
               <p>
                 Edit returned rows directly when cells can be mapped to table
@@ -178,7 +188,7 @@
             </article>
 
             <article class="feature-card">
-              <span class="feature-icon">05</span>
+              <span class="feature-icon">06</span>
               <h3>Table inspector</h3>
               <p>
                 Inspect columns, indexes, foreign keys, and schema-editing SQL
@@ -187,7 +197,7 @@
             </article>
 
             <article class="feature-card">
-              <span class="feature-icon">06</span>
+              <span class="feature-icon">07</span>
               <h3>Backup and restore</h3>
               <p>
                 Export SQL backups with versioned filenames and restore a
@@ -206,6 +216,11 @@
           </div>
 
           <ol class="timeline-list">
+            <li>
+              <span>Launch</span>
+              See the PgDesk splash screen while the workspace initializes in
+              the background.
+            </li>
             <li>
               <span>Connect</span>
               Create or select a PostgreSQL profile and connect to the active
@@ -232,6 +247,42 @@
               SQL file when needed.
             </li>
           </ol>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="section-heading">
+            <span class="section-kicker">Screenshots</span>
+            <h2>A closer look at the current workspace.</h2>
+            <p>
+              The app screenshots are captured from the current Electron build
+              and kept lightweight for README, GitHub, and documentation use.
+            </p>
+          </div>
+
+          <div class="screenshot-grid">
+            <figure>
+              <img
+                src="./assets/app-workspace.png"
+                alt="Clean PgDesk workspace with SQL editor and result panel"
+              />
+              <figcaption>
+                Clean workspace with saved tabs, SQL toolbar, sidebar, and
+                result panel.
+              </figcaption>
+            </figure>
+
+            <figure>
+              <img
+                src="./assets/screenshot.png"
+                alt="PgDesk connection panel and SQL editor"
+              />
+              <figcaption>
+                Connection profile form beside the SQL editor and query toolbar.
+              </figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
@@ -275,7 +326,7 @@
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.20</span>
+        <span>PgDesk v0.1.21</span>
         <span>Built for PostgreSQL developers.</span>
       </div>
     </footer>

@@ -36,7 +36,7 @@
         <div class="container docs-hero-grid">
           <div>
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.20</span>
+              <span class="version-pill">v0.1.21</span>
               <span class="status-pill">User guide</span>
             </div>
             <h1>PgDesk Documentation</h1>
@@ -60,7 +60,7 @@
 
           <figure class="docs-preview">
             <img
-              src="./assets/screenshot.png"
+              src="./assets/app-workspace.png"
               alt="PgDesk interface with database explorer, query editor, and result panel"
             />
           </figure>
@@ -70,11 +70,13 @@
       <section class="docs-layout container">
         <aside class="docs-sidebar" aria-label="Documentation sections">
           <a href="#quick-start">Quick start</a>
+          <a href="#startup">Startup</a>
           <a href="#connect">Connect</a>
           <a href="#explore">Explore</a>
           <a href="#query-tabs">SQL tabs</a>
           <a href="#results">Results</a>
           <a href="#backup">Backup</a>
+          <a href="#screenshots">Screenshots</a>
           <a href="#development">Development</a>
           <a href="#troubleshooting">Help</a>
         </aside>
@@ -110,9 +112,56 @@
             </a>
           </section>
 
+          <section id="startup" class="doc-section">
+            <span class="section-kicker">Startup Experience</span>
+            <h2>Open PgDesk into a ready workspace</h2>
+            <p>
+              PgDesk starts with a focused splash screen that shows the project
+              logo and loading progress while the Electron workspace initializes
+              behind the scenes.
+            </p>
+            <ul class="doc-list">
+              <li>The main workspace stays hidden during initial rendering.</li>
+              <li>
+                The splash remains visible long enough to avoid a distracting
+                flash on fast machines.
+              </li>
+              <li>
+                After the renderer is ready, PgDesk closes the splash and opens
+                the main window maximized.
+              </li>
+              <li>
+                Users do not see a partially rendered workspace behind the
+                loading screen.
+              </li>
+            </ul>
+            <div class="info-grid">
+              <div>
+                <strong>Branded</strong>
+                <span
+                  >Centered PgDesk logo, product name, and status text.</span
+                >
+              </div>
+              <div>
+                <strong>Calm loading</strong>
+                <span>Indeterminate progress bar while the app prepares.</span>
+              </div>
+              <div>
+                <strong>Ready reveal</strong>
+                <span>Main window appears only after startup is complete.</span>
+              </div>
+            </div>
+          </section>
+
           <section id="connect" class="doc-section">
             <span class="section-kicker">Connections</span>
             <h2>Create a PostgreSQL profile</h2>
+            <p>
+              Connection profiles are the entry point for every PgDesk workflow.
+              A profile stores the target server information and lets the app
+              reconnect, refresh metadata, run queries, and perform backup or
+              restore actions against the selected database.
+            </p>
             <ol class="doc-list">
               <li>Open PgDesk and create a new connection profile.</li>
               <li>Enter host, port, database, username, and password.</li>
@@ -123,6 +172,16 @@
             <div class="callout">
               PgDesk keeps multiple connection profiles and tracks which profile
               is currently active.
+            </div>
+            <div class="info-grid">
+              <div>
+                <strong>Required fields</strong>
+                <span>Host, port, database, user, and password.</span>
+              </div>
+              <div>
+                <strong>Optional security</strong>
+                <span>Enable SSL when your PostgreSQL server requires it.</span>
+              </div>
             </div>
           </section>
 
@@ -140,6 +199,11 @@
               <li>Refresh the explorer when database objects change.</li>
               <li>Resize the sidebar when names or schema trees need space.</li>
             </ul>
+            <p>
+              The table context menu is designed for repeated schema work: open
+              table details, inspect columns and indexes, and keep related table
+              actions close to the relation name.
+            </p>
           </section>
 
           <section id="query-tabs" class="doc-section">
@@ -164,6 +228,22 @@ limit 100;</code></pre>
                 Use Save Tab or the keyboard save shortcut to persist tab SQL.
               </li>
             </ul>
+            <div class="info-grid">
+              <div>
+                <strong>Dirty state</strong>
+                <span
+                  >Unsaved tab edits show a marker beside the tab title.</span
+                >
+              </div>
+              <div>
+                <strong>Persistence</strong>
+                <span>Saved tab SQL is restored when the app opens later.</span>
+              </div>
+              <div>
+                <strong>Keyboard save</strong>
+                <span>Use Command+S on macOS or Ctrl+S on Windows/Linux.</span>
+              </div>
+            </div>
           </section>
 
           <section id="results" class="doc-section">
@@ -184,6 +264,29 @@ limit 100;</code></pre>
             <div class="callout">
               Editable saves require table metadata and primary key information.
               Read-only result cells stay protected.
+            </div>
+            <div class="info-grid">
+              <div>
+                <strong>Editable</strong>
+                <span
+                  >Cells from known table columns with primary key
+                  context.</span
+                >
+              </div>
+              <div>
+                <strong>Read-only</strong>
+                <span
+                  >Computed expressions, joins without clear identity, or
+                  missing metadata.</span
+                >
+              </div>
+              <div>
+                <strong>Save feedback</strong>
+                <span
+                  >The result toolbar shows saved counts or database
+                  errors.</span
+                >
+              </div>
             </div>
           </section>
 
@@ -206,6 +309,48 @@ limit 100;</code></pre>
             <div class="callout">
               If your tools live somewhere custom, set PGDESK_POSTGRES_BIN to
               the folder containing pg_dump and psql.
+            </div>
+            <ol class="doc-list">
+              <li>Select Backup from the active connection card.</li>
+              <li>Choose the destination SQL file path.</li>
+              <li>PgDesk runs pg_dump with the active connection settings.</li>
+              <li>Select Restore to choose a SQL backup and run psql.</li>
+              <li>
+                After a successful restore, refresh the explorer metadata.
+              </li>
+            </ol>
+          </section>
+
+          <section id="screenshots" class="doc-section">
+            <span class="section-kicker">Screenshots</span>
+            <h2>Current application captures</h2>
+            <p>
+              These screenshots are lightweight assets used by the README,
+              landing page, and project preview. The clean workspace capture is
+              generated from the built Electron app with a temporary user data
+              folder so it does not include local connection profiles.
+            </p>
+            <div class="screenshot-grid screenshot-grid-docs">
+              <figure>
+                <img
+                  src="./assets/app-workspace.png"
+                  alt="Clean PgDesk workspace with SQL editor and empty result panel"
+                />
+                <figcaption>
+                  Main SQL workspace with query tabs, formatter, save action,
+                  resizable panels, and result area.
+                </figcaption>
+              </figure>
+              <figure>
+                <img
+                  src="./assets/screenshot.png"
+                  alt="PgDesk connection panel and SQL editor"
+                />
+                <figcaption>
+                  Connection and editor view used to document setup and first
+                  query workflows.
+                </figcaption>
+              </figure>
             </div>
           </section>
 
@@ -277,7 +422,7 @@ pnpm run test:e2e</code></pre>
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.20</span>
+        <span>PgDesk v0.1.21</span>
         <a href="./index.html">Back to landing page</a>
       </div>
     </footer>

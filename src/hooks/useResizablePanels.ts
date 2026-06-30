@@ -8,14 +8,20 @@ const clamp = (value: number, min: number, max: number): number => {
 const SIDEBAR_MIN_WIDTH = 240;
 const SIDEBAR_MAX_WIDTH = 460;
 const SIDEBAR_DEFAULT_WIDTH = 280;
-const RESULT_PANEL_MIN_HEIGHT = 180;
+const RESULT_PANEL_MIN_HEIGHT = 300;
 const RESULT_PANEL_TOP_RESERVE = 132;
-const RESULT_PANEL_DEFAULT_HEIGHT = 260;
+
+const getDefaultResultPanelHeight = (): number => {
+  return Math.max(
+    RESULT_PANEL_MIN_HEIGHT,
+    Math.round(window.innerHeight * 0.46),
+  );
+};
 
 export const useResizablePanels = () => {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [resultPanelHeight, setResultPanelHeight] = useState(
-    RESULT_PANEL_DEFAULT_HEIGHT,
+    getDefaultResultPanelHeight,
   );
   const [resizeMode, setResizeMode] = useState<"sidebar" | "result" | null>(
     null,
