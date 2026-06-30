@@ -6,7 +6,7 @@
     <title>PgDesk - PostgreSQL Desktop Client</title>
     <meta
       name="description"
-      content="PgDesk is a focused PostgreSQL desktop client for developers who write SQL, inspect tables, and browse database structure."
+      content="PgDesk is a focused PostgreSQL desktop client for developers who write SQL, inspect database structure, edit query results, and manage backups."
     />
     <link rel="icon" href="./assets/pgdesk.png" />
     <link rel="stylesheet" href="./styles.css" />
@@ -22,6 +22,7 @@
 
         <nav class="nav-links" aria-label="Primary navigation">
           <a href="#features">Features</a>
+          <a href="#workflow">Workflow</a>
           <a href="./documentation.html">Docs</a>
           <a href="https://github.com/khanhpn/pg_desk">GitHub</a>
           <a href="#download">Download</a>
@@ -34,16 +35,16 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.19</span>
+              <span class="version-pill">v0.1.20</span>
               <span class="status-pill">PostgreSQL desktop client</span>
             </div>
 
             <h1>PgDesk</h1>
 
             <p class="hero-lede">
-              A clean desktop workspace for connecting to PostgreSQL, browsing
-              schemas, writing SQL, and reviewing query results without leaving
-              your flow.
+              A professional PostgreSQL workspace for connection management,
+              schema exploration, multi-tab SQL editing, editable results, and
+              database backup workflows.
             </p>
 
             <div class="badge-row" aria-label="GitHub repository badges">
@@ -60,6 +61,10 @@
                 alt="GitHub issues"
               />
               <img
+                src="https://img.shields.io/github/actions/workflow/status/khanhpn/pg_desk/pr-tests.yml?label=tests"
+                alt="GitHub Actions test status"
+              />
+              <img
                 src="https://img.shields.io/github/last-commit/khanhpn/pg_desk"
                 alt="GitHub last commit"
               />
@@ -72,20 +77,20 @@
               >
                 Download latest
               </a>
+              <a class="button button-secondary" href="./documentation.html">
+                Read documentation
+              </a>
               <a
-                class="button button-secondary"
+                class="button button-text"
                 href="https://github.com/khanhpn/pg_desk"
               >
-                View on GitHub
-              </a>
-              <a class="button button-text" href="./documentation.html">
-                Read documentation
+                View source
               </a>
             </div>
 
             <dl class="quick-stats" aria-label="Project highlights">
               <div>
-                <dt>Built with</dt>
+                <dt>Runtime</dt>
                 <dd>Electron + React</dd>
               </div>
               <div>
@@ -93,8 +98,8 @@
                 <dd>CodeMirror SQL</dd>
               </div>
               <div>
-                <dt>Driver</dt>
-                <dd>node-postgres</dd>
+                <dt>Testing</dt>
+                <dd>Vitest + Playwright</dd>
               </div>
             </dl>
           </div>
@@ -114,20 +119,34 @@
         </div>
       </section>
 
+      <section class="section section-tight">
+        <div class="container logo-strip" aria-label="PgDesk capabilities">
+          <span>Connection profiles</span>
+          <span>Schema tree</span>
+          <span>SQL formatter</span>
+          <span>Editable results</span>
+          <span>Backup and restore</span>
+        </div>
+      </section>
+
       <section class="section" id="features">
         <div class="container">
           <div class="section-heading">
-            <span class="section-kicker">Workflow</span>
-            <h2>Everything you need for day-to-day PostgreSQL work.</h2>
+            <span class="section-kicker">Core Features</span>
+            <h2>Built around the daily PostgreSQL workflow.</h2>
+            <p>
+              PgDesk keeps the common database tasks close together: connect,
+              inspect, query, edit, save, and back up without switching tools.
+            </p>
           </div>
 
-          <div class="feature-grid">
+          <div class="feature-grid feature-grid-large">
             <article class="feature-card">
               <span class="feature-icon">01</span>
               <h3>Connection manager</h3>
               <p>
-                Save a PostgreSQL profile with host, port, database, user,
-                password, and optional SSL settings.
+                Save connection profiles with host, port, database, username,
+                password, and optional SSL.
               </p>
             </article>
 
@@ -135,28 +154,103 @@
               <span class="feature-icon">02</span>
               <h3>Database explorer</h3>
               <p>
-                Browse schemas, tables, and views from the sidebar once the
-                connection is active.
+                Browse schemas, tables, and views in a collapsible tree with a
+                modern context menu.
               </p>
             </article>
 
             <article class="feature-card">
               <span class="feature-icon">03</span>
-              <h3>SQL editor</h3>
+              <h3>Multi-tab SQL editor</h3>
               <p>
-                Write queries in a focused editor with PostgreSQL syntax
-                highlighting.
+                Create query tabs, save tab content, restore workspace state,
+                format SQL, and run selected workflows quickly.
               </p>
             </article>
 
             <article class="feature-card">
               <span class="feature-icon">04</span>
-              <h3>Result grid</h3>
+              <h3>Editable result grid</h3>
               <p>
-                Run SQL and inspect returned rows, errors, and empty states in
-                the bottom panel.
+                Edit returned rows directly when cells can be mapped to table
+                metadata and primary keys.
               </p>
             </article>
+
+            <article class="feature-card">
+              <span class="feature-icon">05</span>
+              <h3>Table inspector</h3>
+              <p>
+                Inspect columns, indexes, foreign keys, and schema-editing SQL
+                from the table context menu.
+              </p>
+            </article>
+
+            <article class="feature-card">
+              <span class="feature-icon">06</span>
+              <h3>Backup and restore</h3>
+              <p>
+                Export SQL backups with versioned filenames and restore a
+                database from a selected backup file.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted" id="workflow">
+        <div class="container workflow-grid">
+          <div class="section-heading">
+            <span class="section-kicker">Workflow</span>
+            <h2>From connection to saved changes.</h2>
+          </div>
+
+          <ol class="timeline-list">
+            <li>
+              <span>Connect</span>
+              Create or select a PostgreSQL profile and connect to the active
+              database.
+            </li>
+            <li>
+              <span>Explore</span>
+              Use the sidebar tree to open schemas, tables, views, or table
+              metadata.
+            </li>
+            <li>
+              <span>Query</span>
+              Work across saved SQL tabs with formatter support and keyboard
+              save shortcuts.
+            </li>
+            <li>
+              <span>Edit</span>
+              Update editable cells in the result grid, including boolean
+              checkbox values.
+            </li>
+            <li>
+              <span>Protect</span>
+              Back up a database before risky work and restore from a selected
+              SQL file when needed.
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container platform-panel">
+          <div>
+            <span class="section-kicker">Quality</span>
+            <h2>Tested where it matters.</h2>
+            <p>
+              Pull requests run lint, Vitest unit/component tests, a production
+              build, and a Playwright Electron smoke test before they are ready
+              to merge.
+            </p>
+          </div>
+          <div class="quality-list" aria-label="Testing coverage">
+            <span>Custom hooks</span>
+            <span>UI components</span>
+            <span>Electron E2E</span>
+            <span>Docs version sync</span>
           </div>
         </div>
       </section>
@@ -165,11 +259,11 @@
         <div class="container split-panel">
           <div>
             <span class="section-kicker">Documentation</span>
-            <h2>New to PgDesk?</h2>
+            <h2>Get productive quickly.</h2>
             <p>
-              The usage guide walks through installation, connecting to a
-              database, opening tables, running queries, and troubleshooting the
-              common connection issues.
+              The guide covers installation, connection setup, schema browsing,
+              SQL tabs, editable results, backup and restore, and PostgreSQL
+              client-tool requirements.
             </p>
           </div>
           <a class="button button-primary" href="./documentation.html">
@@ -181,7 +275,7 @@
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.19</span>
+        <span>PgDesk v0.1.20</span>
         <span>Built for PostgreSQL developers.</span>
       </div>
     </footer>

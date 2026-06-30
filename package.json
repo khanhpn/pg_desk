@@ -3,7 +3,7 @@
   "description": "A lightweight PostgreSQL desktop client",
   "author": "Khanh Pham",
   "private": true,
-  "version": "0.1.19",
+  "version": "0.1.20",
   "type": "module",
   "engines": {
     "node": "24.15.0"
@@ -21,6 +21,8 @@
     "release": "pnpm run build && electron-builder --publish never",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "pnpm run build && playwright test",
+    "test:e2e:run": "playwright test",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write .",
@@ -52,6 +54,7 @@
     "xtend": "4.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/pg": "^8.20.0",
