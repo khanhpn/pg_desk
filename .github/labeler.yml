@@ -1,0 +1,39 @@
+electron:
+  - changed-files:
+      - any-glob-to-any-file: "electron/**"
+
+typescript:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.ts"
+          - "**/*.tsx"
+
+javascript:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.js"
+          - "**/*.jsx"
+          - "**/*.mjs"
+          - "**/*.cjs"
+
+css:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.css"
+
+html:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.html"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "document/**"
+          - "documents/**"
+
+landing page:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "document/**"
+          - "documents/**"

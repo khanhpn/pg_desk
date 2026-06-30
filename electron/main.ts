@@ -5,6 +5,7 @@ import { registerAppIpc } from "@ipc/app-ipc";
 import { registerConnectionIpc } from "@ipc/connection-ipc";
 import { registerQueryIpc } from "@ipc/query-ipc";
 import { registerMetadataIpc } from "@electron/ipc/metadata-ipc";
+import { registerDatabaseIpc } from "@electron/ipc/database-ipc";
 import {
   checkForAppUpdates,
   registerAppUpdater,
@@ -23,6 +24,7 @@ registerAppIpc();
 registerConnectionIpc();
 registerQueryIpc();
 registerMetadataIpc();
+registerDatabaseIpc();
 registerUpdateIpc();
 
 process.env.APP_ROOT = path.join(__dirname, "..");

@@ -5,4 +5,7 @@ export NVM_DIR="$HOME/.nvm"
 
 nvm use --silent
 
+pnpm run docs:sync-version
+git add docs/index.html docs/documentation.html
+
 pnpm lint-staged

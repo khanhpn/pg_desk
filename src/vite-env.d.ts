@@ -30,6 +30,18 @@ type PgConnectionListResult = {
   connectedConnectionIds: string[];
 };
 
+type PgDatabaseBackupResult = {
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
+type PgDatabaseRestoreResult = {
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
 type QueryRunResult = {
   ok: boolean;
   message: string;
@@ -206,13 +218,15 @@ type PgDeskApi = {
   };
 
   query: {
-    run: (
-      sql: string,
-      connectionId?: string | null,
-    ) => Promise<QueryRunResult>;
+    run: (sql: string, connectionId?: string | null) => Promise<QueryRunResult>;
     updateCell: (
       payload: QueryCellUpdatePayload,
     ) => Promise<QueryCellUpdateResult>;
+  };
+
+  database: {
+    backup: (connectionId?: string | null) => Promise<PgDatabaseBackupResult>;
+    restore: (connectionId?: string | null) => Promise<PgDatabaseRestoreResult>;
   };
 
   metadata: {

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import "@/App.css";
-import type { PgRelationInfo } from "@/types/metadata";
 
 // imports components
 import { QueryToolbar } from "@/components/QueryToolbar";
@@ -20,11 +19,10 @@ import { useSqlQuery } from "@/hooks/useSqlQuery";
 import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
 import { useResizablePanels } from "@/hooks/useResizablePanels";
 import { useTableInspector } from "@/hooks/useTableInspector";
+import { useDatabaseMaintenance } from "@/hooks/useDatabaseMaintenance";
+import { useRelationSelection } from "@/hooks/useRelationSelection";
 
 const App = () => {
-  const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
-    null,
-  );
   const {
     connectionForm,
     connectionProfiles,
@@ -43,11 +41,7 @@ const App = () => {
     handleDisconnect,
     selectConnectionProfile,
     deleteConnectionProfile,
-  } = useConnectionTest({
-    onActiveConnectionChanged: () => {
-      setSelectedRelationKey(null);
-    },
-  });
+  } = useConnectionTest();
   const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
     useDatabaseExplorer(activeConnectionId);
 
@@ -70,6 +64,16 @@ const App = () => {
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery(activeConnectionId);
+  const { selectedRelationKey, handleSelectRelation } = useRelationSelection(
+    activeConnectionId,
+    handleOpenRelation,
+  );
+  const {
+    databaseMaintenanceMessage,
+    databaseTaskConnectionId,
+    handleBackupDatabase,
+    handleRestoreDatabase,
+  } = useDatabaseMaintenance({ refreshExplorer });
 
   const {
     updateStatus,
@@ -98,14 +102,6 @@ const App = () => {
     refreshTableInspector,
   } = useTableInspector(activeConnectionId);
 
-  const handleSelectRelation = useCallback(
-    async (relation: PgRelationInfo): Promise<void> => {
-      setSelectedRelationKey(`${relation.schema}.${relation.name}`);
-      await handleOpenRelation(relation.schema, relation.name);
-    },
-    [handleOpenRelation],
-  );
-
   useEffect(() => {
     if (!isConnected) {
       return;
@@ -123,6 +119,8 @@ const App = () => {
         activeConnectionId={activeConnectionId}
         connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
+        databaseMaintenanceMessage={databaseMaintenanceMessage}
+        databaseTaskConnectionId={databaseTaskConnectionId}
         isTestingConnection={isTestingConnection}
         isConnectionModalOpen={isConnectionModalOpen}
         updateConnectionField={updateConnectionField}
@@ -134,6 +132,8 @@ const App = () => {
         handleDisconnect={handleDisconnect}
         selectConnectionProfile={selectConnectionProfile}
         deleteConnectionProfile={deleteConnectionProfile}
+        handleBackupDatabase={handleBackupDatabase}
+        handleRestoreDatabase={handleRestoreDatabase}
         schemas={schemas}
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}
