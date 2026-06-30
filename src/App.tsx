@@ -25,6 +25,11 @@ const App = () => {
   const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
     null,
   );
+  const [databaseMaintenanceMessage, setDatabaseMaintenanceMessage] =
+    useState("");
+  const [databaseTaskConnectionId, setDatabaseTaskConnectionId] = useState<
+    string | null
+  >(null);
   const {
     connectionForm,
     connectionProfiles,
@@ -106,6 +111,66 @@ const App = () => {
     [handleOpenRelation],
   );
 
+  const handleBackupDatabase = useCallback(
+    async (connectionId: string): Promise<void> => {
+      setDatabaseTaskConnectionId(connectionId);
+      setDatabaseMaintenanceMessage("Backing up database...");
+
+      try {
+        const result = await window.pgdesk.database.backup(connectionId);
+
+        setDatabaseMaintenanceMessage(
+          result.ok || result.message.endsWith("cancelled")
+            ? result.message
+            : `Error: ${result.message}`,
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        setDatabaseMaintenanceMessage(`Error: ${message}`);
+      } finally {
+        setDatabaseTaskConnectionId(null);
+      }
+    },
+    [],
+  );
+
+  const handleRestoreDatabase = useCallback(
+    async (connectionId: string): Promise<void> => {
+      const confirmed = window.confirm(
+        "Restore this database from a backup file? Existing objects may be dropped and replaced by the backup.",
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      setDatabaseTaskConnectionId(connectionId);
+      setDatabaseMaintenanceMessage("Restoring database...");
+
+      try {
+        const result = await window.pgdesk.database.restore(connectionId);
+
+        setDatabaseMaintenanceMessage(
+          result.ok || result.message.endsWith("cancelled")
+            ? result.message
+            : `Error: ${result.message}`,
+        );
+
+        if (result.ok) {
+          await refreshExplorer();
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        setDatabaseMaintenanceMessage(`Error: ${message}`);
+      } finally {
+        setDatabaseTaskConnectionId(null);
+      }
+    },
+    [refreshExplorer],
+  );
+
   useEffect(() => {
     if (!isConnected) {
       return;
@@ -123,6 +188,8 @@ const App = () => {
         activeConnectionId={activeConnectionId}
         connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
+        databaseMaintenanceMessage={databaseMaintenanceMessage}
+        databaseTaskConnectionId={databaseTaskConnectionId}
         isTestingConnection={isTestingConnection}
         isConnectionModalOpen={isConnectionModalOpen}
         updateConnectionField={updateConnectionField}
@@ -134,6 +201,8 @@ const App = () => {
         handleDisconnect={handleDisconnect}
         selectConnectionProfile={selectConnectionProfile}
         deleteConnectionProfile={deleteConnectionProfile}
+        handleBackupDatabase={handleBackupDatabase}
+        handleRestoreDatabase={handleRestoreDatabase}
         schemas={schemas}
         explorerMessage={explorerMessage}
         isLoadingExplorer={isLoadingExplorer}

@@ -113,6 +113,16 @@
   color: var(--text);
 }
 
+.connection-mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.connection-mini-button:disabled:hover {
+  background: var(--surface-0);
+  color: var(--text-subtle);
+}
+
 .connection-mini-button.primary {
   border-color: rgba(79, 179, 165, 0.38);
   color: var(--accent);

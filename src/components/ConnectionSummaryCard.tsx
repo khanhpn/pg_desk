@@ -6,12 +6,16 @@ type ConnectionSummaryCardProps = {
   activeConnectionId: string | null;
   connectedConnectionIds: string[];
   connectionMessage: string;
+  databaseMaintenanceMessage: string;
+  databaseTaskConnectionId: string | null;
   openNewConnectionModal: () => void;
   editConnectionProfile: (profile: PgConnectionProfile) => void;
   connectConnectionProfile: (profile: PgConnectionProfile) => Promise<void>;
   selectConnectionProfile: (connectionId: string) => Promise<void>;
   deleteConnectionProfile: (connectionId: string) => Promise<void>;
   handleDisconnect: (connectionId?: string | null) => Promise<void>;
+  handleBackupDatabase: (connectionId: string) => Promise<void>;
+  handleRestoreDatabase: (connectionId: string) => Promise<void>;
 };
 
 export const ConnectionSummaryCard = ({
@@ -19,12 +23,16 @@ export const ConnectionSummaryCard = ({
   activeConnectionId,
   connectedConnectionIds,
   connectionMessage,
+  databaseMaintenanceMessage,
+  databaseTaskConnectionId,
   openNewConnectionModal,
   editConnectionProfile,
   connectConnectionProfile,
   selectConnectionProfile,
   deleteConnectionProfile,
   handleDisconnect,
+  handleBackupDatabase,
+  handleRestoreDatabase,
 }: ConnectionSummaryCardProps) => {
   const handleDelete = useCallback(
     (profile: PgConnectionProfile): void => {
@@ -65,6 +73,7 @@ export const ConnectionSummaryCard = ({
         {connectionProfiles.map((profile) => {
           const isActive = profile.id === activeConnectionId;
           const isConnected = connectedConnectionIds.includes(profile.id);
+          const isDatabaseTaskRunning = databaseTaskConnectionId === profile.id;
 
           return (
             <div
@@ -106,15 +115,38 @@ export const ConnectionSummaryCard = ({
                   Edit
                 </button>
                 {isConnected ? (
-                  <button
-                    className="connection-mini-button danger"
-                    type="button"
-                    onClick={() => {
-                      void handleDisconnect(profile.id);
-                    }}
-                  >
-                    Off
-                  </button>
+                  <>
+                    <button
+                      className="connection-mini-button primary"
+                      disabled={isDatabaseTaskRunning}
+                      type="button"
+                      onClick={() => {
+                        void handleBackupDatabase(profile.id);
+                      }}
+                    >
+                      Backup
+                    </button>
+                    <button
+                      className="connection-mini-button"
+                      disabled={isDatabaseTaskRunning}
+                      type="button"
+                      onClick={() => {
+                        void handleRestoreDatabase(profile.id);
+                      }}
+                    >
+                      Restore
+                    </button>
+                    <button
+                      className="connection-mini-button danger"
+                      disabled={isDatabaseTaskRunning}
+                      type="button"
+                      onClick={() => {
+                        void handleDisconnect(profile.id);
+                      }}
+                    >
+                      Off
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button
@@ -152,6 +184,18 @@ export const ConnectionSummaryCard = ({
           }
         >
           {connectionMessage}
+        </div>
+      )}
+
+      {databaseMaintenanceMessage && (
+        <div
+          className={
+            databaseMaintenanceMessage.startsWith("Error")
+              ? "connection-message error"
+              : "connection-message"
+          }
+        >
+          {databaseMaintenanceMessage}
         </div>
       )}
     </div>

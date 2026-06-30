@@ -15,26 +15,38 @@ export const TableContextMenu = ({
   closeMenu,
   openTableInspector,
 }: TableContextMenuProps): JSX.Element => {
-  const menuLeft = Math.min(x, window.innerWidth - 236);
-  const menuTop = Math.min(y, window.innerHeight - 72);
+  const menuLeft = Math.min(x, window.innerWidth - 292);
+  const menuTop = Math.min(y, window.innerHeight - 132);
 
   return (
     <div className="context-menu-backdrop" onClick={closeMenu}>
       <div
         className="table-context-menu"
+        role="menu"
+        aria-label={`${relation.name} table actions`}
         style={{ left: Math.max(8, menuLeft), top: Math.max(8, menuTop) }}
         onClick={(event) => {
           event.stopPropagation();
         }}
       >
+        <div className="context-menu-header">
+          <span className="context-menu-kicker">{relation.schema}</span>
+          <span className="context-menu-heading">{relation.name}</span>
+        </div>
+
         <button
           className="context-menu-item"
+          role="menuitem"
           type="button"
           onClick={() => {
             void openTableInspector(relation);
           }}
         >
-          <span className="context-menu-icon">i</span>
+          <span className="context-menu-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
           <span>
             <span className="context-menu-title">Table details</span>
             <span className="context-menu-subtitle">

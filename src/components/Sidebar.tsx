@@ -14,6 +14,8 @@ type SidebarProps = {
   activeConnectionId: string | null;
   connectedConnectionIds: string[];
   connectionMessage: string;
+  databaseMaintenanceMessage: string;
+  databaseTaskConnectionId: string | null;
   isTestingConnection: boolean;
   isConnectionModalOpen: boolean;
   updateConnectionField: (
@@ -28,6 +30,8 @@ type SidebarProps = {
   handleDisconnect: (connectionId?: string | null) => Promise<void>;
   selectConnectionProfile: (connectionId: string) => Promise<void>;
   deleteConnectionProfile: (connectionId: string) => Promise<void>;
+  handleBackupDatabase: (connectionId: string) => Promise<void>;
+  handleRestoreDatabase: (connectionId: string) => Promise<void>;
 
   schemas: PgSchemaInfo[];
   explorerMessage: string;
@@ -49,6 +53,8 @@ export const Sidebar = ({
   activeConnectionId,
   connectedConnectionIds,
   connectionMessage,
+  databaseMaintenanceMessage,
+  databaseTaskConnectionId,
   isTestingConnection,
   isConnectionModalOpen,
   updateConnectionField,
@@ -60,6 +66,8 @@ export const Sidebar = ({
   handleDisconnect,
   selectConnectionProfile,
   deleteConnectionProfile,
+  handleBackupDatabase,
+  handleRestoreDatabase,
 
   schemas,
   explorerMessage,
@@ -99,12 +107,16 @@ export const Sidebar = ({
         activeConnectionId={activeConnectionId}
         connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
+        databaseMaintenanceMessage={databaseMaintenanceMessage}
+        databaseTaskConnectionId={databaseTaskConnectionId}
         openNewConnectionModal={openNewConnectionModal}
         editConnectionProfile={editConnectionProfile}
         connectConnectionProfile={connectConnectionProfile}
         selectConnectionProfile={selectConnectionProfile}
         deleteConnectionProfile={deleteConnectionProfile}
         handleDisconnect={handleDisconnect}
+        handleBackupDatabase={handleBackupDatabase}
+        handleRestoreDatabase={handleRestoreDatabase}
       />
 
       <DatabaseExplorer

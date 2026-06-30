@@ -30,6 +30,18 @@ type PgConnectionListResult = {
   connectedConnectionIds: string[];
 };
 
+type PgDatabaseBackupResult = {
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
+type PgDatabaseRestoreResult = {
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
 type QueryRunResult = {
   ok: boolean;
   message: string;
@@ -239,6 +251,18 @@ const pgdeskApi = {
       payload: QueryCellUpdatePayload,
     ): Promise<QueryCellUpdateResult> => {
       return ipcRenderer.invoke("query:update-cell", payload);
+    },
+  },
+
+  database: {
+    backup: (connectionId?: string | null): Promise<PgDatabaseBackupResult> => {
+      return ipcRenderer.invoke("database:backup", { connectionId });
+    },
+
+    restore: (
+      connectionId?: string | null,
+    ): Promise<PgDatabaseRestoreResult> => {
+      return ipcRenderer.invoke("database:restore", { connectionId });
     },
   },
 
