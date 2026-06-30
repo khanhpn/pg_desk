@@ -1,32 +1,106 @@
 # PgDesk
 
-A modern PostgreSQL desktop client for developers.
+PgDesk is a focused PostgreSQL desktop client for developers who want a clean
+workspace for connecting to databases, browsing structure, writing SQL, editing
+query results, and backing up data.
 
-🌐 Landing page: https://khanhpn.github.io/pg_desk/
+[Landing page](https://khanhpn.github.io/pg_desk/) ·
+[Documentation](https://khanhpn.github.io/pg_desk/documentation.html) ·
+[Releases](https://github.com/khanhpn/pg_desk/releases/latest)
 
-## Preview
+![PgDesk preview](docs/assets/screenshot.png)
 
-![pg_desk preview](docs/assets/pgdesk-preview.png)
+## What PgDesk Does
 
-A lightweight PostgreSQL desktop client for writing SQL, running queries, and browsing your database.
+- **Connection profiles** — save PostgreSQL connections with host, port,
+  database, username, password, and optional SSL.
+- **Schema explorer** — browse schemas, tables, and views in a collapsible tree
+  sidebar.
+- **Multi-tab SQL editor** — create, close, save, and restore query tabs between
+  sessions.
+- **SQL formatter** — format ad hoc SQL from the editor toolbar.
+- **Resizable workspace** — resize the left explorer and result panel to fit the
+  task at hand.
+- **Editable result grid** — edit returned rows directly when PgDesk can map
+  cells back to a table primary key.
+- **Boolean cell controls** — editable boolean values render as checkboxes.
+- **Table inspector** — open table metadata and schema editing tools from the
+  sidebar context menu.
+- **Backup and restore** — export a database to a timestamped SQL file and
+  restore from an existing backup.
+- **Auto updates** — desktop update status and download actions are surfaced in
+  the app.
 
-![PgDesk screenshot](docs/screenshot.png)
-
-## Features
-
-- **Connection manager** — connect with host, port, database, user, password, and optional SSL
-- **SQL editor** — syntax-highlighted editor for writing and editing queries
-- **Query runner** — execute SQL and view results in a tabbed output panel
-- **Database explorer** — browse schemas and tables after connecting
-
-## Supported platforms
+## Supported Platforms
 
 | Platform                      | Status    |
 | ----------------------------- | --------- |
-| macOS (Apple Silicon & Intel) | Supported |
-| Windows (x64)                 | Supported |
-| Linux (AppImage)              | Supported |
+| macOS Apple Silicon and Intel | Supported |
+| Windows x64                   | Supported |
+| Linux AppImage                | Supported |
+
+## Backup Requirements
+
+Backup and restore use PostgreSQL client tools:
+
+- `pg_dump` for backup
+- `psql` for restore
+
+PgDesk searches common install locations for Homebrew, Postgres.app, libpq, and
+Windows PostgreSQL folders. If your install is custom, set
+`PGDESK_POSTGRES_BIN` to the folder containing `pg_dump` and `psql`.
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, available scripts, and project structure.
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run the app in development:
+
+```bash
+pnpm dev
+```
+
+Build the app:
+
+```bash
+pnpm run build
+```
+
+The landing page version is synchronized from `package.json` before dev/build
+and in the pre-commit hook.
+
+## Testing
+
+PgDesk uses Vitest for unit/component coverage and Playwright for Electron E2E
+coverage.
+
+```bash
+pnpm test
+pnpm run lint
+pnpm run test:e2e
+```
+
+Current coverage includes:
+
+- custom hooks for query tabs, relation selection, and database maintenance
+- toolbar, topbar, and result grid component behavior
+- Electron smoke test for launching the built app and verifying the main
+  workspace
+
+Pull requests into `main` run lint, Vitest, build, and Playwright E2E through
+GitHub Actions.
+
+## Releases
+
+Release workflows build macOS and Windows artifacts from version tags. Download
+the newest build from the
+[latest release](https://github.com/khanhpn/pg_desk/releases/latest).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for repository setup, scripts, and
+project structure.
