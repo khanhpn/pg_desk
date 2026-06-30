@@ -28,16 +28,16 @@ pnpm dev
 
 ## Scripts
 
-| Command                  | Description                                                    |
-| ------------------------ | -------------------------------------------------------------- |
-| `pnpm dev`               | Run the app with hot reload                                    |
-| `pnpm build`             | Type-check, bundle, and package the app                        |
-| `pnpm release:mac`       | Build macOS DMG artifacts for Apple Silicon and Intel          |
-| `pnpm release:mac:intel` | Build macOS DMG artifacts for Intel Macs only                  |
-| `pnpm lint`              | Run ESLint                                                     |
-| `pnpm lint:fix`          | Run ESLint with auto-fix                                       |
-| `pnpm format`            | Format code with Prettier                                      |
-| `pnpm format:check`      | Check formatting without writing                               |
+| Command                  | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `pnpm dev`               | Run the app with hot reload                           |
+| `pnpm build`             | Type-check, bundle, and package the app               |
+| `pnpm release:mac`       | Build macOS DMG artifacts for Apple Silicon and Intel |
+| `pnpm release:mac:intel` | Build macOS DMG artifacts for Intel Macs only         |
+| `pnpm lint`              | Run ESLint                                            |
+| `pnpm lint:fix`          | Run ESLint with auto-fix                              |
+| `pnpm format`            | Format code with Prettier                             |
+| `pnpm format:check`      | Check formatting without writing                      |
 
 ## Project structure
 

@@ -214,7 +214,7 @@ const closeSplashWindow = (afterClose?: () => void): void => {
   closeWindow();
 };
 
-function createSplashWindow() {
+const createSplashWindow = (): void => {
   splashWindow = new BrowserWindow({
     width: 460,
     height: 350,
@@ -243,9 +243,9 @@ function createSplashWindow() {
   });
 
   void splashWindow.loadFile(splashPath);
-}
+};
 
-function createWindow() {
+const createWindow = (): void => {
   win = new BrowserWindow({
     title: APP_NAME,
     icon: iconPath,
@@ -275,7 +275,7 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, "index.html"));
   }
-}
+};
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

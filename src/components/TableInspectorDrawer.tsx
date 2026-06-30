@@ -57,9 +57,7 @@ const formatDataType = (
 
 const quoteIdentifier = (identifier: string): string => `"${identifier}"`;
 
-const buildPreviewSql = (
-  payload: PgTableChangePayload | null,
-): string => {
+const buildPreviewSql = (payload: PgTableChangePayload | null): string => {
   if (!payload) {
     return "";
   }
@@ -180,7 +178,9 @@ export const TableInspectorDrawer = ({
       return;
     }
 
-    const confirmed = window.confirm(`Apply this schema change?\n\n${previewSql}`);
+    const confirmed = window.confirm(
+      `Apply this schema change?\n\n${previewSql}`,
+    );
 
     if (!confirmed) {
       return;
@@ -428,9 +428,7 @@ export const TableInspectorDrawer = ({
                 {editAction !== "change-data-type" && (
                   <label className="inspector-field">
                     <span>
-                      {editAction === "add-column"
-                        ? "Column name"
-                        : "New name"}
+                      {editAction === "add-column" ? "Column name" : "New name"}
                     </span>
                     <input
                       value={newColumnName}

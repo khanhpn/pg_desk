@@ -45,7 +45,9 @@ const clampColumnWidth = (width: number): number => {
 };
 
 const getDefaultColumnWidth = (column: string): number => {
-  return clampColumnWidth(Math.max(COLUMN_DEFAULT_WIDTH, column.length * 9 + 32));
+  return clampColumnWidth(
+    Math.max(COLUMN_DEFAULT_WIDTH, column.length * 9 + 32),
+  );
 };
 
 export const ResultPanel = ({
