@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import "@/App.css";
-import type { PgRelationInfo } from "@/types/metadata";
 
 // imports components
 import { QueryToolbar } from "@/components/QueryToolbar";
@@ -20,16 +19,10 @@ import { useSqlQuery } from "@/hooks/useSqlQuery";
 import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
 import { useResizablePanels } from "@/hooks/useResizablePanels";
 import { useTableInspector } from "@/hooks/useTableInspector";
+import { useDatabaseMaintenance } from "@/hooks/useDatabaseMaintenance";
+import { useRelationSelection } from "@/hooks/useRelationSelection";
 
 const App = () => {
-  const [selectedRelationKey, setSelectedRelationKey] = useState<string | null>(
-    null,
-  );
-  const [databaseMaintenanceMessage, setDatabaseMaintenanceMessage] =
-    useState("");
-  const [databaseTaskConnectionId, setDatabaseTaskConnectionId] = useState<
-    string | null
-  >(null);
   const {
     connectionForm,
     connectionProfiles,
@@ -48,11 +41,7 @@ const App = () => {
     handleDisconnect,
     selectConnectionProfile,
     deleteConnectionProfile,
-  } = useConnectionTest({
-    onActiveConnectionChanged: () => {
-      setSelectedRelationKey(null);
-    },
-  });
+  } = useConnectionTest();
   const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
     useDatabaseExplorer(activeConnectionId);
 
@@ -75,6 +64,16 @@ const App = () => {
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery(activeConnectionId);
+  const { selectedRelationKey, handleSelectRelation } = useRelationSelection(
+    activeConnectionId,
+    handleOpenRelation,
+  );
+  const {
+    databaseMaintenanceMessage,
+    databaseTaskConnectionId,
+    handleBackupDatabase,
+    handleRestoreDatabase,
+  } = useDatabaseMaintenance({ refreshExplorer });
 
   const {
     updateStatus,
@@ -102,74 +101,6 @@ const App = () => {
     closeTableInspector,
     refreshTableInspector,
   } = useTableInspector(activeConnectionId);
-
-  const handleSelectRelation = useCallback(
-    async (relation: PgRelationInfo): Promise<void> => {
-      setSelectedRelationKey(`${relation.schema}.${relation.name}`);
-      await handleOpenRelation(relation.schema, relation.name);
-    },
-    [handleOpenRelation],
-  );
-
-  const handleBackupDatabase = useCallback(
-    async (connectionId: string): Promise<void> => {
-      setDatabaseTaskConnectionId(connectionId);
-      setDatabaseMaintenanceMessage("Backing up database...");
-
-      try {
-        const result = await window.pgdesk.database.backup(connectionId);
-
-        setDatabaseMaintenanceMessage(
-          result.ok || result.message.endsWith("cancelled")
-            ? result.message
-            : `Error: ${result.message}`,
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        setDatabaseMaintenanceMessage(`Error: ${message}`);
-      } finally {
-        setDatabaseTaskConnectionId(null);
-      }
-    },
-    [],
-  );
-
-  const handleRestoreDatabase = useCallback(
-    async (connectionId: string): Promise<void> => {
-      const confirmed = window.confirm(
-        "Restore this database from a backup file? Existing objects may be dropped and replaced by the backup.",
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
-      setDatabaseTaskConnectionId(connectionId);
-      setDatabaseMaintenanceMessage("Restoring database...");
-
-      try {
-        const result = await window.pgdesk.database.restore(connectionId);
-
-        setDatabaseMaintenanceMessage(
-          result.ok || result.message.endsWith("cancelled")
-            ? result.message
-            : `Error: ${result.message}`,
-        );
-
-        if (result.ok) {
-          await refreshExplorer();
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        setDatabaseMaintenanceMessage(`Error: ${message}`);
-      } finally {
-        setDatabaseTaskConnectionId(null);
-      }
-    },
-    [refreshExplorer],
-  );
 
   useEffect(() => {
     if (!isConnected) {
