@@ -1,7 +1,11 @@
 // @vitest-environment node
 
 import { describe, expect, it } from "vitest";
-import { selectDockerContainerFromPsOutput } from "@electron/services/postgres-backup-service";
+import {
+  buildSqlBackupFileName,
+  getPgDumpSqlBackupArgs,
+  selectDockerContainerFromPsOutput,
+} from "@electron/services/postgres-backup-service";
 import type { PgConnectionProfile } from "@electron/types/connection";
 
 const createProfile = (port: number): PgConnectionProfile => ({
@@ -13,6 +17,24 @@ const createProfile = (port: number): PgConnectionProfile => ({
   password: "secret",
   database: "auth",
   ssl: false,
+});
+
+describe("getPgDumpSqlBackupArgs", () => {
+  it("uses plain SQL output so backups are saved as readable .sql files", () => {
+    expect(getPgDumpSqlBackupArgs()).toEqual([
+      "--format=plain",
+      "--no-owner",
+      "--no-privileges",
+    ]);
+  });
+});
+
+describe("buildSqlBackupFileName", () => {
+  it("uses database name, version, date label, and .sql extension", () => {
+    expect(buildSqlBackupFileName("sales db", 3, "2026_07_01")).toBe(
+      "sales-db_v3_2026_07_01.sql",
+    );
+  });
 });
 
 describe("selectDockerContainerFromPsOutput", () => {

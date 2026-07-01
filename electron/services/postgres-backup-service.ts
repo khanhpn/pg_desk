@@ -36,20 +36,74 @@ type CommandResult = {
 const POSTGRES_VERSIONS = ["17", "16", "15", "14", "13", "12"];
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
 
-const formatTimestamp = (): string => {
-  return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+const formatDateLabel = (): string => {
+  return new Date().toISOString().slice(0, 10).replace(/-/g, "_");
 };
 
 const sanitizeFileName = (value: string): string => {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-|-$/g, "");
 };
 
-const getDefaultBackupPath = (profile: PgConnectionProfile): string => {
-  const name = sanitizeFileName(
-    `${profile.name || profile.database}-${formatTimestamp()}`,
-  );
+const escapeRegExp = (value: string): string => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
 
-  return path.join(app.getPath("documents"), `${name}.dump`);
+export const buildSqlBackupFileName = (
+  databaseName: string,
+  version: number,
+  dateLabel: string,
+): string => {
+  const safeDatabaseName = sanitizeFileName(databaseName) || "database";
+
+  return `${safeDatabaseName}_v${version}_${dateLabel}.sql`;
+};
+
+const getNextBackupVersion = async (
+  folderPath: string,
+  databaseName: string,
+  dateLabel: string,
+): Promise<number> => {
+  try {
+    const files = await fsp.readdir(folderPath);
+    const safeDatabaseName = sanitizeFileName(databaseName) || "database";
+    const backupPattern = new RegExp(
+      `^${escapeRegExp(safeDatabaseName)}_v(\\d+)_${escapeRegExp(
+        dateLabel,
+      )}\\.sql$`,
+    );
+    const versions = files
+      .map((fileName) => {
+        return backupPattern.exec(fileName)?.[1];
+      })
+      .filter((version): version is string => {
+        return Boolean(version);
+      })
+      .map(Number);
+
+    return versions.length > 0 ? Math.max(...versions) + 1 : 1;
+  } catch {
+    return 1;
+  }
+};
+
+const getDefaultBackupPath = async (
+  profile: PgConnectionProfile,
+): Promise<string> => {
+  const documentsPath = app.getPath("documents");
+  const databaseName = profile.database || profile.name || "database";
+  const dateLabel = formatDateLabel();
+  const version = await getNextBackupVersion(
+    documentsPath,
+    databaseName,
+    dateLabel,
+  );
+  const fileName = buildSqlBackupFileName(databaseName, version, dateLabel);
+
+  return path.join(documentsPath, fileName);
+};
+
+export const getPgDumpSqlBackupArgs = (): string[] => {
+  return ["--format=plain", "--no-owner", "--no-privileges"];
 };
 
 const showSaveDialog = (
@@ -479,9 +533,9 @@ export const backupPostgresDatabase = async (
     const profile = await getConnectionProfile(connectionId);
     const saveResult = await showSaveDialog(parentWindow, {
       title: "Save database backup",
-      defaultPath: getDefaultBackupPath(profile),
+      defaultPath: await getDefaultBackupPath(profile),
       filters: [
-        { name: "PostgreSQL custom backup", extensions: ["dump"] },
+        { name: "PostgreSQL plain SQL backup", extensions: ["sql"] },
         { name: "All files", extensions: ["*"] },
       ],
     });
@@ -499,7 +553,7 @@ export const backupPostgresDatabase = async (
       runner,
       "pg_dump",
       profile,
-      ["--format=custom", "--no-owner", "--no-privileges"],
+      getPgDumpSqlBackupArgs(),
       {
         stdoutPath: saveResult.filePath,
       },
@@ -529,8 +583,12 @@ export const restorePostgresDatabase = async (
       properties: ["openFile"],
       filters: [
         {
-          name: "PostgreSQL backup",
-          extensions: ["dump", "backup", "sql"],
+          name: "PostgreSQL SQL backup",
+          extensions: ["sql"],
+        },
+        {
+          name: "PostgreSQL legacy custom backup",
+          extensions: ["dump", "backup"],
         },
         { name: "All files", extensions: ["*"] },
       ],

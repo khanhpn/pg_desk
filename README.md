@@ -55,12 +55,14 @@ data.
 
 Backup and restore use PostgreSQL client tools:
 
-- `pg_dump` for backup
-- `psql` for restore
+- `pg_dump --format=plain` for readable `.sql` backups
+- `psql` for restoring `.sql` backups
+- `pg_restore` for restoring older `.dump` or `.backup` files
 
 PgDesk searches common install locations for Homebrew, Postgres.app, libpq, and
 Windows PostgreSQL folders. If your install is custom, set
-`PGDESK_POSTGRES_BIN` to the folder containing `pg_dump` and `psql`.
+`PGDESK_POSTGRES_BIN` to the folder containing `pg_dump`, `psql`, and
+`pg_restore`.
 
 If the database runs in Docker and local PostgreSQL tools are not installed,
 PgDesk can use `docker exec` to run PostgreSQL tools inside the container. It

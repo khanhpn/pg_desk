@@ -36,7 +36,7 @@
         <div class="container docs-hero-grid">
           <div>
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.23</span>
+              <span class="version-pill">v0.1.24</span>
               <span class="status-pill">User guide</span>
             </div>
             <h1>PgDesk Documentation</h1>
@@ -294,34 +294,36 @@ limit 100;</code></pre>
             <span class="section-kicker">Backup and Restore</span>
             <h2>Protect database changes</h2>
             <p>
-              PgDesk can create SQL backups and restore from selected backup
-              files. Backup filenames use the database name, an incrementing
-              version number, and the current date.
+              PgDesk creates readable plain SQL backups with pg_dump and
+              restores from selected backup files. Backup filenames use the
+              database name, an incrementing version number, and the current
+              date.
             </p>
             <pre
               class="code-block"
             ><code>database_v1_2026_06_30.sql</code></pre>
             <p>
               Backup and restore depend on PostgreSQL client tools. PgDesk
-              searches common locations for `pg_dump` and `psql`, including
-              Homebrew, libpq, Postgres.app, and Windows PostgreSQL folders.
+              searches common locations for pg_dump, psql, and pg_restore,
+              including Homebrew, libpq, Postgres.app, and Windows PostgreSQL
+              folders.
             </p>
             <div class="callout">
               If your tools live somewhere custom, set PGDESK_POSTGRES_BIN to
-              the folder containing pg_dump and psql. For Docker databases,
-              PgDesk can run the PostgreSQL tools inside the container with
-              docker exec when local tools are not installed.
+              the folder containing pg_dump, psql, and pg_restore. For Docker
+              databases, PgDesk can run the PostgreSQL tools inside the
+              container with docker exec when local tools are not installed.
             </div>
             <ol class="doc-list">
               <li>Select Backup from the active connection card.</li>
               <li>Choose the destination SQL file path.</li>
               <li>
-                PgDesk runs pg_dump with the active connection settings, either
-                locally or inside the detected Docker container.
+                PgDesk runs pg_dump with plain SQL output, either locally or
+                inside the detected Docker container.
               </li>
               <li>
-                Select Restore to choose a SQL backup and run psql or
-                pg_restore.
+                Select Restore to choose a SQL backup and run psql. Older custom
+                dump files still restore through pg_restore.
               </li>
               <li>
                 After a successful restore, refresh the explorer metadata.
@@ -409,13 +411,13 @@ pnpm run test:e2e</code></pre>
                 </p>
               </details>
               <details>
-                <summary>pg_dump or psql is not found</summary>
+                <summary>pg_dump, psql, or pg_restore is not found</summary>
                 <p>
                   Install PostgreSQL client tools or set PGDESK_POSTGRES_BIN to
-                  the folder containing pg_dump and psql. If the database runs
-                  in Docker, make sure Docker is running and the PostgreSQL
-                  container publishes the same port used by the PgDesk
-                  connection. Set PGDESK_DOCKER_CONTAINER when multiple
+                  the folder containing pg_dump, psql, and pg_restore. If the
+                  database runs in Docker, make sure Docker is running and the
+                  PostgreSQL container publishes the same port used by the
+                  PgDesk connection. Set PGDESK_DOCKER_CONTAINER when multiple
                   containers are ambiguous.
                 </p>
               </details>
@@ -434,7 +436,7 @@ pnpm run test:e2e</code></pre>
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.23</span>
+        <span>PgDesk v0.1.24</span>
         <a href="./index.html">Back to landing page</a>
       </div>
     </footer>
