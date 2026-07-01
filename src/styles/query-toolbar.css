@@ -44,6 +44,18 @@
   background: var(--surface-2);
 }
 
+.toolbar-button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-button-icon {
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1;
+}
+
 .toolbar-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;

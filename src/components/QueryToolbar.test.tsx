@@ -5,6 +5,7 @@ import { QueryToolbar } from "@/components/QueryToolbar";
 describe("QueryToolbar", () => {
   it("runs, formats, and saves the active query tab from toolbar buttons", () => {
     const handleRunQuery = vi.fn().mockResolvedValue(undefined);
+    const handleExplainQuery = vi.fn().mockResolvedValue(undefined);
     const formatActiveTabSql = vi.fn();
     const saveActiveTab = vi.fn();
 
@@ -14,6 +15,7 @@ describe("QueryToolbar", () => {
         isActiveTabDirty
         queryMessage="SELECT · 2 rows · 1ms"
         handleRunQuery={handleRunQuery}
+        handleExplainQuery={handleExplainQuery}
         formatActiveTabSql={formatActiveTabSql}
         saveActiveTab={saveActiveTab}
       />,
@@ -21,9 +23,11 @@ describe("QueryToolbar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Run/i }));
     fireEvent.click(screen.getByRole("button", { name: "Format" }));
+    fireEvent.click(screen.getByRole("button", { name: /Explain/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save Tab" }));
 
     expect(handleRunQuery).toHaveBeenCalledOnce();
+    expect(handleExplainQuery).toHaveBeenCalledOnce();
     expect(formatActiveTabSql).toHaveBeenCalledOnce();
     expect(saveActiveTab).toHaveBeenCalledOnce();
     expect(screen.getByText("SELECT · 2 rows · 1ms")).toBeInTheDocument();
@@ -36,12 +40,14 @@ describe("QueryToolbar", () => {
         isActiveTabDirty={false}
         queryMessage="Running query..."
         handleRunQuery={vi.fn()}
+        handleExplainQuery={vi.fn()}
         formatActiveTabSql={vi.fn()}
         saveActiveTab={vi.fn()}
       />,
     );
 
     expect(screen.getByRole("button", { name: "Running..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Explain/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save Tab" })).toBeDisabled();
   });
 });

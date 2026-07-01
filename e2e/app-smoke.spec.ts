@@ -118,7 +118,12 @@ test("opens the built app and renders the main query workspace", async () => {
     await expect(
       window.getByRole("button", { name: "New query tab" }),
     ).toBeDisabled();
+    await expect(
+      window.getByRole("button", { name: /Explain/i }),
+    ).toBeVisible();
     await expect(window.getByText("No query executed yet.")).toBeVisible();
+    await expect(window.getByText("Messages")).not.toBeVisible();
+    await expect(window.getByText("History")).not.toBeVisible();
     await expect.poll(() => splashWindow.isClosed()).toBe(true);
     await expect
       .poll(async () => {
@@ -131,11 +136,6 @@ test("opens the built app and renders the main query workspace", async () => {
         });
       })
       .toBe(true);
-
-    await window.getByRole("button", { name: /not tested|pong/i }).click();
-    await expect(
-      window.getByRole("button", { name: /pong from Electron main process/i }),
-    ).toBeVisible();
   } finally {
     await electronApp.close();
   }

@@ -245,6 +245,41 @@ export const useSqlQuery = (connectionId: string | null) => {
     await runSqlText(activeTab.id, activeTab.sql);
   }, [activeTab.id, activeTab.sql, runSqlText]);
 
+  const handleExplainQuery = useCallback(async (): Promise<void> => {
+    updateTab(activeTab.id, (tab) => ({
+      ...tab,
+      isRunningQuery: true,
+      queryMessage: "Generating query plan...",
+    }));
+
+    try {
+      const result = await window.pgdesk.query.explain(
+        activeTab.sql,
+        connectionId,
+      );
+
+      updateTab(activeTab.id, (tab) => ({
+        ...tab,
+        queryResult: result,
+        queryMessage: result.ok
+          ? `EXPLAIN · ${result.rowCount} plan nodes · ${result.durationMs}ms`
+          : `Error: ${result.message}`,
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      updateTab(activeTab.id, (tab) => ({
+        ...tab,
+        queryMessage: `Error: ${message}`,
+      }));
+    } finally {
+      updateTab(activeTab.id, (tab) => ({
+        ...tab,
+        isRunningQuery: false,
+      }));
+    }
+  }, [activeTab.id, activeTab.sql, connectionId, updateTab]);
+
   const formatActiveTabSql = useCallback((): void => {
     const formattedSql = formatSql(activeTab.sql);
 
@@ -308,6 +343,7 @@ export const useSqlQuery = (connectionId: string | null) => {
     closeTab,
     saveActiveTab,
     formatActiveTabSql,
+    handleExplainQuery,
     handleRunQuery,
     handleOpenRelation,
   };

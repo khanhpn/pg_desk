@@ -14,7 +14,6 @@ import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 // imports hooks
 import { useConnectionTest } from "@/hooks/useConnectionTest";
-import { useIpcPing } from "@/hooks/useIpcPing";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
 import { useDatabaseExplorer } from "@/hooks/useDatabaseExplorer";
 import { useResizablePanels } from "@/hooks/useResizablePanels";
@@ -45,8 +44,6 @@ const App = () => {
   const { schemas, explorerMessage, isLoadingExplorer, refreshExplorer } =
     useDatabaseExplorer(activeConnectionId);
 
-  const { ipcMessage, handlePing } = useIpcPing();
-
   const {
     sql,
     setSql,
@@ -61,6 +58,7 @@ const App = () => {
     closeTab,
     saveActiveTab,
     formatActiveTabSql,
+    handleExplainQuery,
     handleRunQuery,
     handleOpenRelation,
   } = useSqlQuery(activeConnectionId);
@@ -153,8 +151,6 @@ const App = () => {
 
       <main className="workspace">
         <Topbar
-          ipcMessage={ipcMessage}
-          handlePing={handlePing}
           tabs={tabs}
           activeTabId={activeTabId}
           canCreateTab={isConnected}
@@ -168,6 +164,7 @@ const App = () => {
           isActiveTabDirty={isActiveTabDirty}
           queryMessage={queryMessage}
           handleRunQuery={handleRunQuery}
+          handleExplainQuery={handleExplainQuery}
           formatActiveTabSql={formatActiveTabSql}
           saveActiveTab={saveActiveTab}
         />

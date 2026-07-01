@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
 
 const run = vi.fn();
+const explain = vi.fn();
 
 const installPgDeskMock = (): void => {
   Object.defineProperty(window, "pgdesk", {
@@ -10,6 +11,7 @@ const installPgDeskMock = (): void => {
     value: {
       query: {
         run,
+        explain,
       },
     },
   });
@@ -19,6 +21,7 @@ describe("useSqlQuery", () => {
   beforeEach(() => {
     installPgDeskMock();
     run.mockReset();
+    explain.mockReset();
     window.localStorage.clear();
   });
 
@@ -85,6 +88,38 @@ describe("useSqlQuery", () => {
     expect(run).toHaveBeenCalledWith("select 1 as id;", "connection-1");
     expect(result.current.queryMessage).toBe("SELECT · 1 rows · 5ms");
     expect(result.current.queryResult?.rows).toEqual([{ id: 1 }]);
+    expect(result.current.isRunningQuery).toBe(false);
+  });
+
+  it("explains the active SQL against the active connection", async () => {
+    explain.mockResolvedValue({
+      ok: true,
+      message: "Query plan generated successfully",
+      columns: ["node_type", "total_cost"],
+      columnMetadata: [],
+      rows: [{ node_type: "Seq Scan", total_cost: 12.5 }],
+      rowCount: 1,
+      durationMs: 3,
+      command: "EXPLAIN",
+    });
+    const { result } = renderHook(() => useSqlQuery("connection-1"));
+
+    act(() => {
+      result.current.setSql("select * from users;");
+    });
+
+    await act(async () => {
+      await result.current.handleExplainQuery();
+    });
+
+    expect(explain).toHaveBeenCalledWith(
+      "select * from users;",
+      "connection-1",
+    );
+    expect(result.current.queryMessage).toBe("EXPLAIN · 1 plan nodes · 3ms");
+    expect(result.current.queryResult?.rows).toEqual([
+      { node_type: "Seq Scan", total_cost: 12.5 },
+    ]);
     expect(result.current.isRunningQuery).toBe(false);
   });
 });

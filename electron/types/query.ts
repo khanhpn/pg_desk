@@ -3,6 +3,8 @@ export type QueryRunPayload = {
   sql: string;
 };
 
+export type QueryExplainPayload = QueryRunPayload;
+
 export type QueryColumnMetadata = {
   name: string;
   dataTypeId: number;

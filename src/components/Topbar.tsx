@@ -1,8 +1,6 @@
 import type { QueryTab } from "@/hooks/useSqlQuery";
 
 type TopbarProps = {
-  ipcMessage: string;
-  handlePing: () => Promise<void>;
   tabs: QueryTab[];
   activeTabId: string;
   canCreateTab: boolean;
@@ -12,8 +10,6 @@ type TopbarProps = {
 };
 
 export const Topbar = ({
-  ipcMessage,
-  handlePing,
   tabs,
   activeTabId,
   canCreateTab,
@@ -80,15 +76,6 @@ export const Topbar = ({
           +
         </button>
       </div>
-
-      <button
-        className="connection-info connection-info-button"
-        type="button"
-        onClick={handlePing}
-      >
-        <span className="dot" />
-        {ipcMessage}
-      </button>
     </header>
   );
 };

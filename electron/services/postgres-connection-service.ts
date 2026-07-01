@@ -11,6 +11,7 @@ import type {
   QueryCellUpdatePayload,
   QueryCellUpdateResult,
   QueryColumnMetadata,
+  QueryExplainPayload,
   QueryRunPayload,
   QueryRunResult,
 } from "@electron/types/query";
@@ -71,6 +72,31 @@ type SourceColumnRow = {
   column_id: number;
 };
 
+type ExplainPlanNode = {
+  "Node Type"?: string;
+  Schema?: string;
+  "Relation Name"?: string;
+  Alias?: string;
+  "Startup Cost"?: number;
+  "Total Cost"?: number;
+  "Plan Rows"?: number;
+  "Plan Width"?: number;
+  "Join Type"?: string;
+  "Index Name"?: string;
+  Filter?: string;
+  "Index Cond"?: string;
+  "Hash Cond"?: string;
+  "Merge Cond"?: string;
+  "Recheck Cond"?: string;
+  Plans?: ExplainPlanNode[];
+};
+
+type ExplainResultRow = {
+  "QUERY PLAN": Array<{
+    Plan?: ExplainPlanNode;
+  }>;
+};
+
 export const getActiveConnectionId = (): string | null => {
   return activeConnectionId;
 };
@@ -100,6 +126,55 @@ const createPool = (config: PgConnectionConfig): PgPool => {
 
 const quoteIdentifier = (identifier: string): string => {
   return `"${identifier.replace(/"/g, '""')}"`;
+};
+
+const stripTrailingSemicolons = (sql: string): string => {
+  return sql.trim().replace(/;+\s*$/g, "");
+};
+
+const buildExplainSql = (sql: string): string => {
+  return `EXPLAIN (FORMAT JSON, VERBOSE, COSTS) ${stripTrailingSemicolons(sql)}`;
+};
+
+const formatExplainRelation = (plan: ExplainPlanNode): string => {
+  return [plan.Schema, plan["Relation Name"]].filter(Boolean).join(".");
+};
+
+const formatExplainDetails = (plan: ExplainPlanNode): string => {
+  return [
+    plan["Join Type"] ? `Join: ${plan["Join Type"]}` : null,
+    plan["Index Name"] ? `Index: ${plan["Index Name"]}` : null,
+    plan.Filter ? `Filter: ${plan.Filter}` : null,
+    plan["Index Cond"] ? `Index Cond: ${plan["Index Cond"]}` : null,
+    plan["Hash Cond"] ? `Hash Cond: ${plan["Hash Cond"]}` : null,
+    plan["Merge Cond"] ? `Merge Cond: ${plan["Merge Cond"]}` : null,
+    plan["Recheck Cond"] ? `Recheck Cond: ${plan["Recheck Cond"]}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+};
+
+const flattenExplainPlan = (
+  plan: ExplainPlanNode,
+  level = 0,
+): Record<string, unknown>[] => {
+  const currentRow = {
+    level,
+    node_type: plan["Node Type"] ?? "Plan",
+    relation: formatExplainRelation(plan),
+    startup_cost: plan["Startup Cost"] ?? null,
+    total_cost: plan["Total Cost"] ?? null,
+    plan_rows: plan["Plan Rows"] ?? null,
+    plan_width: plan["Plan Width"] ?? null,
+    details: formatExplainDetails(plan),
+  };
+
+  return [
+    currentRow,
+    ...(plan.Plans ?? []).flatMap((childPlan) => {
+      return flattenExplainPlan(childPlan, level + 1);
+    }),
+  ];
 };
 
 const getPrimaryKeyMetadata = async (
@@ -489,6 +564,77 @@ export const runPostgresQuery = async ({
       durationMs,
       command: result.command,
       editMessage,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      columns: [],
+      columnMetadata: [],
+      rows: [],
+      rowCount: 0,
+      durationMs: Date.now() - startedAt,
+    };
+  }
+};
+
+export const explainPostgresQuery = async ({
+  connectionId,
+  sql,
+}: QueryExplainPayload): Promise<QueryRunResult> => {
+  const pool = getActivePostgresPool(connectionId);
+
+  if (!pool) {
+    return {
+      ok: false,
+      message: "No active PostgreSQL connection",
+      columns: [],
+      columnMetadata: [],
+      rows: [],
+      rowCount: 0,
+      durationMs: 0,
+    };
+  }
+
+  if (!sql.trim()) {
+    return {
+      ok: false,
+      message: "SQL is empty",
+      columns: [],
+      columnMetadata: [],
+      rows: [],
+      rowCount: 0,
+      durationMs: 0,
+    };
+  }
+
+  const startedAt = Date.now();
+
+  try {
+    const result = await pool.query<ExplainResultRow>(buildExplainSql(sql));
+    const durationMs = Date.now() - startedAt;
+    const rootPlan = result.rows[0]?.["QUERY PLAN"]?.[0]?.Plan;
+    const rows = rootPlan ? flattenExplainPlan(rootPlan) : [];
+
+    return {
+      ok: true,
+      message: "Query plan generated successfully",
+      columns: [
+        "level",
+        "node_type",
+        "relation",
+        "startup_cost",
+        "total_cost",
+        "plan_rows",
+        "plan_width",
+        "details",
+      ],
+      columnMetadata: [],
+      rows,
+      rowCount: rows.length,
+      durationMs,
+      command: "EXPLAIN",
+      editMessage: "Query plans are read-only.",
     };
   } catch (error) {
     return {

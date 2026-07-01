@@ -19,8 +19,6 @@ describe("Topbar", () => {
   it("disables new tabs until a database is connected", () => {
     render(
       <Topbar
-        ipcMessage="pong"
-        handlePing={vi.fn()}
         tabs={[createTab()]}
         activeTabId="query-1"
         canCreateTab={false}
@@ -45,8 +43,6 @@ describe("Topbar", () => {
 
     render(
       <Topbar
-        ipcMessage="pong"
-        handlePing={vi.fn()}
         tabs={[
           createTab({ id: "query-1", title: "Query 1" }),
           createTab({

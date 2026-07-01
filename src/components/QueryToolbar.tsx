@@ -3,6 +3,7 @@ type QueryToolbarProps = {
   isActiveTabDirty: boolean;
   queryMessage: string;
   handleRunQuery: () => Promise<void>;
+  handleExplainQuery: () => Promise<void>;
   formatActiveTabSql: () => void;
   saveActiveTab: () => void;
 };
@@ -12,6 +13,7 @@ export const QueryToolbar = ({
   isActiveTabDirty,
   queryMessage,
   handleRunQuery,
+  handleExplainQuery,
   formatActiveTabSql,
   saveActiveTab,
 }: QueryToolbarProps): JSX.Element => {
@@ -36,6 +38,19 @@ export const QueryToolbar = ({
         type="button"
       >
         Format
+      </button>
+
+      <button
+        className="toolbar-button toolbar-button-with-icon"
+        disabled={isRunningQuery}
+        onClick={handleExplainQuery}
+        title="Explain query plan and estimated cost"
+        type="button"
+      >
+        <span aria-hidden="true" className="toolbar-button-icon">
+          ◇
+        </span>
+        Explain
       </button>
 
       <button

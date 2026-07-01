@@ -143,8 +143,6 @@ export const ResultPanel = ({
     <section className="result-panel" style={resultPanelStyle}>
       <div className="result-tabs">
         <div className="result-tab active">Result</div>
-        <div className="result-tab">Messages</div>
-        <div className="result-tab">History</div>
 
         <div className="result-actions">
           <span className={saveMessageClassName}>

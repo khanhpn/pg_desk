@@ -247,6 +247,13 @@ const pgdeskApi = {
       return ipcRenderer.invoke("query:run", { sql, connectionId });
     },
 
+    explain: (
+      sql: string,
+      connectionId?: string | null,
+    ): Promise<QueryRunResult> => {
+      return ipcRenderer.invoke("query:explain", { sql, connectionId });
+    },
+
     updateCell: (
       payload: QueryCellUpdatePayload,
     ): Promise<QueryCellUpdateResult> => {

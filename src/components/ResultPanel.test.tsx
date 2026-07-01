@@ -84,6 +84,9 @@ describe("ResultPanel", () => {
     );
 
     expect(screen.getByText("No query executed yet.")).toBeInTheDocument();
+    expect(screen.getByText("Result")).toBeInTheDocument();
+    expect(screen.queryByText("Messages")).not.toBeInTheDocument();
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 

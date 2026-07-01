@@ -219,6 +219,10 @@ type PgDeskApi = {
 
   query: {
     run: (sql: string, connectionId?: string | null) => Promise<QueryRunResult>;
+    explain: (
+      sql: string,
+      connectionId?: string | null,
+    ) => Promise<QueryRunResult>;
     updateCell: (
       payload: QueryCellUpdatePayload,
     ) => Promise<QueryCellUpdateResult>;
