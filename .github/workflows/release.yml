@@ -71,6 +71,8 @@ jobs:
           path: |
             dist-release/*.dmg
             dist-release/*.dmg.blockmap
+            dist-release/*.zip
+            dist-release/*.zip.blockmap
             dist-release/latest-mac.yml
           if-no-files-found: error
 

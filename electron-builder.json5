@@ -12,12 +12,7 @@
   files: ["dist", "dist-electron", "!**/*.map"],
   mac: {
     icon: "build/icon.png",
-    target: [
-      {
-        target: "dmg",
-        arch: ["x64", "arm64"],
-      },
-    ],
+    target: ["dmg", "zip"],
     artifactName: "${productName}-Mac-${version}-${arch}.${ext}",
   },
   win: {
