@@ -62,6 +62,12 @@ PgDesk searches common install locations for Homebrew, Postgres.app, libpq, and
 Windows PostgreSQL folders. If your install is custom, set
 `PGDESK_POSTGRES_BIN` to the folder containing `pg_dump` and `psql`.
 
+If the database runs in Docker and local PostgreSQL tools are not installed,
+PgDesk can use `docker exec` to run PostgreSQL tools inside the container. It
+auto-detects a PostgreSQL/PostGIS container published on the active connection
+port. If multiple containers are ambiguous, set `PGDESK_DOCKER_CONTAINER` to
+the target container name.
+
 ## Development
 
 Install dependencies:

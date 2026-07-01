@@ -205,7 +205,9 @@ const runCommand = async (
   }
 
   if (options.stdoutPath) {
-    streams.push(pipeline(child.stdout, fs.createWriteStream(options.stdoutPath)));
+    streams.push(
+      pipeline(child.stdout, fs.createWriteStream(options.stdoutPath)),
+    );
   } else {
     child.stdout.resume();
   }
@@ -276,6 +278,34 @@ type DockerContainerInfo = NonNullable<
   ReturnType<typeof parseDockerContainerLine>
 >;
 
+const isContainerPublishedOnPort = (
+  container: DockerContainerInfo,
+  port: number,
+): boolean => {
+  return container.ports.includes(`:${port}->`);
+};
+
+export const selectDockerContainerFromPsOutput = (
+  output: string,
+  profile: PgConnectionProfile,
+): string | null => {
+  const containers = output
+    .split(/\r?\n/)
+    .map(parseDockerContainerLine)
+    .filter((container): container is DockerContainerInfo => {
+      return Boolean(container);
+    });
+  const portMatches = containers.filter((container) => {
+    return isContainerPublishedOnPort(container, profile.port);
+  });
+
+  if (portMatches.length === 1) {
+    return portMatches[0].name;
+  }
+
+  return null;
+};
+
 const readCommandOutput = async (
   command: string,
   args: string[],
@@ -326,29 +356,7 @@ const findDockerContainerFromPsOutput = async (
     return null;
   }
 
-  const containers = result.stdout
-    .split(/\r?\n/)
-    .map(parseDockerContainerLine)
-    .filter((container): container is DockerContainerInfo => {
-      return Boolean(container);
-    });
-  const postgresContainers = containers.filter((container) => {
-    const haystack =
-      `${container.image} ${container.name} ${container.ports}`.toLowerCase();
-
-    return (
-      haystack.includes("postgres") ||
-      haystack.includes("postgis") ||
-      haystack.includes(`:${profile.port}->`) ||
-      haystack.includes(`0.0.0.0:${profile.port}`)
-    );
-  });
-
-  if (postgresContainers.length === 1) {
-    return postgresContainers[0].name;
-  }
-
-  return null;
+  return selectDockerContainerFromPsOutput(result.stdout, profile);
 };
 
 const resolveToolRunner = async (
