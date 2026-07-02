@@ -22,6 +22,7 @@ describe("useDatabaseMaintenance", () => {
     installPgDeskMock();
     backup.mockReset();
     restore.mockReset();
+    vi.useRealTimers();
   });
 
   it("backs up the requested connection and exposes the result message", async () => {
@@ -44,6 +45,61 @@ describe("useDatabaseMaintenance", () => {
     expect(result.current.databaseMaintenanceMessage).toBe(
       "Backup saved to users_v1_2026_06_30.sql",
     );
+  });
+
+  it("shows a success toast after backup and closes it automatically", async () => {
+    vi.useFakeTimers();
+    backup.mockResolvedValue({
+      ok: true,
+      message: "Backup saved to auth_v1_2026_07_02.sql",
+    });
+    const refreshExplorer = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useDatabaseMaintenance({ refreshExplorer }),
+    );
+
+    await act(async () => {
+      await result.current.handleBackupDatabase("connection-1");
+    });
+
+    expect(result.current.databaseMaintenanceToast).toEqual({
+      status: "success",
+      title: "Backup complete",
+      message: "Backup saved to auth_v1_2026_07_02.sql",
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(5200);
+    });
+
+    expect(result.current.databaseMaintenanceToast).toBeNull();
+  });
+
+  it("keeps backup errors visible until the toast is closed", async () => {
+    backup.mockResolvedValue({
+      ok: false,
+      message: "pg_dump failed",
+    });
+    const refreshExplorer = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useDatabaseMaintenance({ refreshExplorer }),
+    );
+
+    await act(async () => {
+      await result.current.handleBackupDatabase("connection-1");
+    });
+
+    expect(result.current.databaseMaintenanceToast).toEqual({
+      status: "error",
+      title: "Backup failed",
+      message: "Error: pg_dump failed",
+    });
+
+    act(() => {
+      result.current.closeDatabaseMaintenanceToast();
+    });
+
+    expect(result.current.databaseMaintenanceToast).toBeNull();
   });
 
   it("does not restore the database when the confirmation is rejected", async () => {

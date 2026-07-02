@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import {
   checkForAppUpdates,
   downloadAppUpdate,
+  installAppUpdate,
 } from "@electron/services/app-update-service";
 
 export const registerUpdateIpc = (): void => {
@@ -15,6 +16,14 @@ export const registerUpdateIpc = (): void => {
 
   ipcMain.handle("update:download", async () => {
     await downloadAppUpdate();
+
+    return {
+      ok: true,
+    };
+  });
+
+  ipcMain.handle("update:install", async () => {
+    await installAppUpdate();
 
     return {
       ok: true,

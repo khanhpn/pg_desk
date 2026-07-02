@@ -185,6 +185,7 @@ type UpdateStatusPayload = {
     | "not-available"
     | "downloading"
     | "downloaded"
+    | "installing"
     | "error";
   message: string;
   version?: string;
@@ -310,6 +311,10 @@ const pgdeskApi = {
 
     download: (): Promise<{ ok: boolean }> => {
       return ipcRenderer.invoke("update:download");
+    },
+
+    install: (): Promise<{ ok: boolean }> => {
+      return ipcRenderer.invoke("update:install");
     },
 
     onStatus: (

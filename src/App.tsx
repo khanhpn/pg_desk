@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SqlEditor } from "@/components/SqlEditor";
 import { Topbar } from "@/components/Topbar";
 import { AppUpdateToast } from "@/components/AppUpdateToast";
+import { DatabaseMaintenanceToast } from "@/components/DatabaseMaintenanceToast";
 import { TableContextMenu } from "@/components/TableContextMenu";
 import { TableInspectorDrawer } from "@/components/TableInspectorDrawer";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
@@ -67,8 +68,9 @@ const App = () => {
     handleOpenRelation,
   );
   const {
-    databaseMaintenanceMessage,
+    databaseMaintenanceToast,
     databaseTaskConnectionId,
+    closeDatabaseMaintenanceToast,
     handleBackupDatabase,
     handleRestoreDatabase,
   } = useDatabaseMaintenance({ refreshExplorer });
@@ -77,6 +79,7 @@ const App = () => {
     updateStatus,
     isUpdateToastVisible,
     handleDownloadUpdate,
+    handleInstallUpdate,
     closeUpdateToast,
   } = useAppUpdate();
 
@@ -117,7 +120,6 @@ const App = () => {
         activeConnectionId={activeConnectionId}
         connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
-        databaseMaintenanceMessage={databaseMaintenanceMessage}
         databaseTaskConnectionId={databaseTaskConnectionId}
         isTestingConnection={isTestingConnection}
         isConnectionModalOpen={isConnectionModalOpen}
@@ -196,7 +198,13 @@ const App = () => {
         updateStatus={updateStatus}
         isVisible={isUpdateToastVisible}
         handleDownloadUpdate={handleDownloadUpdate}
+        handleInstallUpdate={handleInstallUpdate}
         closeUpdateToast={closeUpdateToast}
+      />
+
+      <DatabaseMaintenanceToast
+        toast={databaseMaintenanceToast}
+        closeToast={closeDatabaseMaintenanceToast}
       />
 
       {contextMenu && (

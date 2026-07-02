@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDatabaseTreeState } from "@/hooks/useDatabaseTreeState";
 import type { PgRelationInfo, PgSchemaInfo } from "@/types/metadata";
 
@@ -20,6 +20,26 @@ const buildRelationKey = (relation: PgRelationInfo): string => {
   return `${relation.schema}.${relation.name}`;
 };
 
+const relationMatchesFilter = (
+  schemaName: string,
+  relation: PgRelationInfo,
+  filter: string,
+): boolean => {
+  if (!filter) {
+    return true;
+  }
+
+  const normalizedSchema = schemaName.toLowerCase();
+  const normalizedName = relation.name.toLowerCase();
+  const qualifiedName = `${normalizedSchema}.${normalizedName}`;
+
+  return (
+    normalizedSchema.includes(filter) ||
+    normalizedName.includes(filter) ||
+    qualifiedName.includes(filter)
+  );
+};
+
 export const DatabaseExplorer = ({
   schemas,
   explorerMessage,
@@ -29,11 +49,48 @@ export const DatabaseExplorer = ({
   handleOpenRelation,
   openTableContextMenu,
 }: DatabaseExplorerProps) => {
+  const [filterText, setFilterText] = useState("");
   const { isSchemaExpanded, isGroupExpanded, toggleSchema, toggleGroup } =
     useDatabaseTreeState();
   const handleRefreshExplorer = useCallback((): void => {
     void refreshExplorer();
   }, [refreshExplorer]);
+  const normalizedFilter = filterText.trim().toLowerCase();
+  const totalRelationCount = useMemo(() => {
+    return schemas.reduce((total, schema) => {
+      return total + schema.tables.length + schema.views.length;
+    }, 0);
+  }, [schemas]);
+  const filteredSchemas = useMemo(() => {
+    if (!normalizedFilter) {
+      return schemas;
+    }
+
+    return schemas
+      .map((schema) => {
+        const tables = schema.tables.filter((table) => {
+          return relationMatchesFilter(schema.name, table, normalizedFilter);
+        });
+        const views = schema.views.filter((view) => {
+          return relationMatchesFilter(schema.name, view, normalizedFilter);
+        });
+
+        return {
+          ...schema,
+          tables,
+          views,
+        };
+      })
+      .filter((schema) => {
+        return schema.tables.length > 0 || schema.views.length > 0;
+      });
+  }, [normalizedFilter, schemas]);
+  const filteredRelationCount = useMemo(() => {
+    return filteredSchemas.reduce((total, schema) => {
+      return total + schema.tables.length + schema.views.length;
+    }, 0);
+  }, [filteredSchemas]);
+  const isFiltering = normalizedFilter.length > 0;
 
   return (
     <div className="tree">
@@ -52,10 +109,38 @@ export const DatabaseExplorer = ({
 
       <div className="tree-message">{explorerMessage}</div>
 
-      {schemas.map((schema) => {
-        const schemaExpanded = isSchemaExpanded(schema.name);
-        const tablesExpanded = isGroupExpanded(schema.name, "tables");
-        const viewsExpanded = isGroupExpanded(schema.name, "views");
+      <div className="tree-filter">
+        <span className="tree-filter-icon">⌕</span>
+        <input
+          className="tree-filter-input"
+          type="search"
+          aria-label="Filter tables and views"
+          placeholder="Filter tables or views"
+          value={filterText}
+          onChange={(event) => {
+            setFilterText(event.target.value);
+          }}
+        />
+      </div>
+
+      <div className="tree-filter-meta">
+        {isFiltering
+          ? `${filteredRelationCount}/${totalRelationCount} matches`
+          : `${totalRelationCount} relations`}
+      </div>
+
+      {isFiltering && filteredSchemas.length === 0 && (
+        <div className="tree-filter-empty">
+          No tables or views match this filter.
+        </div>
+      )}
+
+      {filteredSchemas.map((schema) => {
+        const schemaExpanded = isFiltering || isSchemaExpanded(schema.name);
+        const tablesExpanded =
+          isFiltering || isGroupExpanded(schema.name, "tables");
+        const viewsExpanded =
+          isFiltering || isGroupExpanded(schema.name, "views");
 
         return (
           <div className="tree-schema" key={schema.name}>

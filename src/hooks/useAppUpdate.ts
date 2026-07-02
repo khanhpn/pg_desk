@@ -5,6 +5,7 @@ const visibleStatuses = new Set<UpdateStatusPayload["status"]>([
   "available",
   "downloading",
   "downloaded",
+  "installing",
   "error",
 ]);
 
@@ -31,6 +32,30 @@ export const useAppUpdate = () => {
     }));
 
     await window.pgdesk.update.download();
+  }, []);
+
+  const handleInstallUpdate = useCallback(async (): Promise<void> => {
+    setUpdateStatus({
+      status: "installing",
+      message: "PGDesk is restarting to install the update...",
+    });
+    setIsUpdateToastVisible(true);
+
+    await window.pgdesk.update.install();
+
+    window.setTimeout(() => {
+      setUpdateStatus((current) => {
+        if (current?.status !== "installing") {
+          return current;
+        }
+
+        return {
+          status: "error",
+          message:
+            "The installer did not restart PGDesk. Close PGDesk and open it again to finish installing the update.",
+        };
+      });
+    }, 10000);
   }, []);
 
   const closeUpdateToast = useCallback((): void => {
@@ -61,6 +86,7 @@ export const useAppUpdate = () => {
     updateStatus,
     isUpdateToastVisible,
     handleDownloadUpdate,
+    handleInstallUpdate,
     closeUpdateToast,
   };
 };

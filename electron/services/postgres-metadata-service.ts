@@ -136,6 +136,7 @@ export const getPostgresExplorer = async (
       select schema_name
       from information_schema.schemata
       where schema_name not in ('pg_catalog', 'information_schema')
+        and schema_name not like 'pg\\_%' escape '\\'
       order by schema_name
     `);
 
@@ -143,6 +144,7 @@ export const getPostgresExplorer = async (
       select table_schema, table_name, table_type
       from information_schema.tables
       where table_schema not in ('pg_catalog', 'information_schema')
+        and table_schema not like 'pg\\_%' escape '\\'
         and table_type in ('BASE TABLE', 'VIEW')
       order by table_schema, table_type, table_name
     `);

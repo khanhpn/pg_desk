@@ -14,7 +14,6 @@ type SidebarProps = {
   activeConnectionId: string | null;
   connectedConnectionIds: string[];
   connectionMessage: string;
-  databaseMaintenanceMessage: string;
   databaseTaskConnectionId: string | null;
   isTestingConnection: boolean;
   isConnectionModalOpen: boolean;
@@ -53,7 +52,6 @@ export const Sidebar = ({
   activeConnectionId,
   connectedConnectionIds,
   connectionMessage,
-  databaseMaintenanceMessage,
   databaseTaskConnectionId,
   isTestingConnection,
   isConnectionModalOpen,
@@ -107,7 +105,6 @@ export const Sidebar = ({
         activeConnectionId={activeConnectionId}
         connectedConnectionIds={connectedConnectionIds}
         connectionMessage={connectionMessage}
-        databaseMaintenanceMessage={databaseMaintenanceMessage}
         databaseTaskConnectionId={databaseTaskConnectionId}
         openNewConnectionModal={openNewConnectionModal}
         editConnectionProfile={editConnectionProfile}

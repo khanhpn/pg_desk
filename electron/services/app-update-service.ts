@@ -10,6 +10,7 @@ type UpdateStatusPayload = {
     | "not-available"
     | "downloading"
     | "downloaded"
+    | "installing"
     | "error";
   message: string;
   version?: string;
@@ -92,13 +93,9 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
   updater.on("update-downloaded", (info) => {
     sendUpdateStatus({
       status: "downloaded",
-      message: `PGDesk ${info.version} downloaded. Installing...`,
+      message: `PGDesk ${info.version} is ready to install.`,
       version: info.version,
     });
-
-    setTimeout(() => {
-      updater.quitAndInstall(false, true);
-    }, 900);
   });
 
   updater.on("error", (error) => {
@@ -133,4 +130,13 @@ export const checkForAppUpdates = async (isManual = false): Promise<void> => {
 
 export const downloadAppUpdate = async (): Promise<void> => {
   await getAutoUpdater().downloadUpdate();
+};
+
+export const installAppUpdate = async (): Promise<void> => {
+  sendUpdateStatus({
+    status: "installing",
+    message: "PGDesk is restarting to install the update...",
+  });
+
+  getAutoUpdater().quitAndInstall(false, true);
 };

@@ -185,6 +185,7 @@ type UpdateStatusPayload = {
     | "not-available"
     | "downloading"
     | "downloaded"
+    | "installing"
     | "error";
   message: string;
   version?: string;
@@ -251,6 +252,7 @@ type PgDeskApi = {
   update: {
     check: () => Promise<{ ok: boolean }>;
     download: () => Promise<{ ok: boolean }>;
+    install: () => Promise<{ ok: boolean }>;
     onStatus: (callback: (payload: UpdateStatusPayload) => void) => () => void;
   };
 };
