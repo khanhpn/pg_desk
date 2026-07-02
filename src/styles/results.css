@@ -5,16 +5,17 @@
   display: flex;
   flex-direction: column;
   background: var(--surface-0);
+  border-top: 1px solid var(--border-soft);
 }
 
 .result-tabs {
-  height: 32px;
+  height: 34px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
+  gap: 8px;
+  padding: 0 10px;
   border-bottom: 1px solid var(--border-soft);
-  background: var(--surface-1);
+  background: color-mix(in srgb, var(--surface-1) 88%, var(--surface-0));
 }
 
 .result-actions {
@@ -26,18 +27,19 @@
 }
 
 .result-tab {
-  height: 22px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11px;
+  height: 100%;
+  padding: 0 2px;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-subtle);
   display: flex;
   align-items: center;
 }
 
 .result-tab.active {
-  background: var(--surface-2);
   color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 .save-message {
@@ -79,6 +81,7 @@
   flex: 1;
   overflow: auto;
   min-height: 0;
+  background: var(--surface-0);
 }
 
 .result-grid {
@@ -92,13 +95,14 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--surface-1);
+  height: 32px;
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--surface-0));
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border-soft);
-  padding: 7px 10px;
+  padding: 0 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -113,20 +117,26 @@
 }
 
 .result-grid td.readonly-cell {
-  padding: 7px 10px;
+  padding: 8px 12px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
+}
+
+.result-grid tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .result-grid tbody tr:hover {
-  background: rgba(37, 49, 66, 0.52);
+  background: rgba(79, 179, 165, 0.08);
 }
 
 .result-grid th:first-child,
 .result-grid td:first-child {
   color: var(--text-faint);
-  text-align: right;
-  background: var(--editor-gutter-bg);
+  text-align: left;
+  background: color-mix(in srgb, var(--editor-gutter-bg) 86%, var(--surface-0));
+  padding-left: 12px;
 }
 
 .result-grid th:not(:first-child) {
@@ -189,13 +199,14 @@
 .result-cell-input {
   width: 100%;
   min-width: 0;
-  height: 31px;
+  height: 33px;
   border: 0;
   background: transparent;
   color: var(--text);
-  padding: 0 10px;
+  padding: 0 12px;
   font: inherit;
   outline: none;
+  text-align: left;
 }
 
 .result-checkbox {
@@ -207,22 +218,22 @@
 
 .empty-result {
   min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 16px;
   color: var(--text-subtle);
   font-size: 13px;
-  text-align: center;
+  text-align: left;
 }
 
 .query-error-message {
   min-height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  display: flex;
+  align-items: flex-start;
+  padding: 20px 16px;
   color: var(--danger);
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
-  text-align: center;
+  text-align: left;
 }

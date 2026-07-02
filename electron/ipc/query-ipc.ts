@@ -1,12 +1,14 @@
 import { ipcMain } from "electron";
 import {
+  cancelPostgresQuery,
   explainPostgresQuery,
   runPostgresQuery,
   updatePostgresCell,
 } from "@electron/services/postgres-connection-service";
 import type {
-  QueryExplainPayload,
   QueryCellUpdatePayload,
+  QueryCancelPayload,
+  QueryExplainPayload,
   QueryRunPayload,
 } from "@electron/types/query";
 
@@ -14,6 +16,13 @@ export const registerQueryIpc = (): void => {
   ipcMain.handle("query:run", async (_event, payload: QueryRunPayload) => {
     return runPostgresQuery(payload);
   });
+
+  ipcMain.handle(
+    "query:cancel",
+    async (_event, payload: QueryCancelPayload) => {
+      return cancelPostgresQuery(payload);
+    },
+  );
 
   ipcMain.handle(
     "query:explain",

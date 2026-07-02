@@ -8,6 +8,8 @@ import type {
   PgConnectionTestResult,
 } from "@electron/types/connection";
 import type {
+  QueryCancelPayload,
+  QueryCancelResult,
   QueryCellUpdatePayload,
   QueryCellUpdateResult,
   QueryColumnMetadata,
@@ -32,6 +34,14 @@ const { Pool } = require("pg") as typeof import("pg");
 
 const poolsByConnectionId = new Map<string, PgPool>();
 let activeConnectionId: string | null = null;
+
+type ActiveQuery = {
+  connectionId: string;
+  pool: PgPool;
+  processId: number | null;
+};
+
+const activeQueriesByRequestId = new Map<string, ActiveQuery>();
 
 type QueryFieldMetadata = {
   name: string;
@@ -516,9 +526,11 @@ export const disconnectPostgres = async (
 
 export const runPostgresQuery = async ({
   connectionId,
+  requestId,
   sql,
 }: QueryRunPayload): Promise<QueryRunResult> => {
   const pool = getActivePostgresPool(connectionId);
+  const targetConnectionId = connectionId ?? activeConnectionId;
 
   if (!pool) {
     return {
@@ -545,9 +557,21 @@ export const runPostgresQuery = async ({
   }
 
   const startedAt = Date.now();
+  let client: PoolClient | null = null;
 
   try {
-    const result = await pool.query(sql);
+    client = await pool.connect();
+
+    if (requestId && targetConnectionId) {
+      activeQueriesByRequestId.set(requestId, {
+        connectionId: targetConnectionId,
+        pool,
+        processId:
+          (client as unknown as { processID?: number }).processID ?? null,
+      });
+    }
+
+    const result = await client.query(sql);
     const durationMs = Date.now() - startedAt;
     const { columns: columnMetadata, editMessage } = await buildColumnMetadata(
       pool,
@@ -574,6 +598,60 @@ export const runPostgresQuery = async ({
       rows: [],
       rowCount: 0,
       durationMs: Date.now() - startedAt,
+    };
+  } finally {
+    if (requestId) {
+      activeQueriesByRequestId.delete(requestId);
+    }
+
+    client?.release();
+  }
+};
+
+export const cancelPostgresQuery = async ({
+  connectionId,
+  requestId,
+}: QueryCancelPayload): Promise<QueryCancelResult> => {
+  const activeQuery = activeQueriesByRequestId.get(requestId);
+
+  if (!activeQuery) {
+    return {
+      ok: false,
+      message: "No running query found",
+    };
+  }
+
+  const targetConnectionId = connectionId ?? activeConnectionId;
+
+  if (targetConnectionId && activeQuery.connectionId !== targetConnectionId) {
+    return {
+      ok: false,
+      message: "Running query belongs to another connection",
+    };
+  }
+
+  if (!activeQuery.processId) {
+    return {
+      ok: false,
+      message: "Running query backend id is not available",
+    };
+  }
+
+  try {
+    const result = await activeQuery.pool.query<{ cancelled: boolean }>(
+      "select pg_cancel_backend($1) as cancelled",
+      [activeQuery.processId],
+    );
+    const cancelled = Boolean(result.rows[0]?.cancelled);
+
+    return {
+      ok: cancelled,
+      message: cancelled ? "Cancelling query" : "PostgreSQL refused cancel",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
     };
   }
 };

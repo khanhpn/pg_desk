@@ -83,6 +83,11 @@ type QueryCellUpdateResult = {
   rowCount: number;
 };
 
+type QueryCancelResult = {
+  ok: boolean;
+  message: string;
+};
+
 type PgRelationType = "table" | "view";
 
 type PgRelationInfo = {
@@ -219,7 +224,15 @@ type PgDeskApi = {
   };
 
   query: {
-    run: (sql: string, connectionId?: string | null) => Promise<QueryRunResult>;
+    run: (
+      sql: string,
+      connectionId?: string | null,
+      requestId?: string,
+    ) => Promise<QueryRunResult>;
+    cancel: (
+      connectionId: string | null,
+      requestId: string,
+    ) => Promise<QueryCancelResult>;
     explain: (
       sql: string,
       connectionId?: string | null,

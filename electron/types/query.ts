@@ -1,9 +1,20 @@
 export type QueryRunPayload = {
   connectionId?: string | null;
+  requestId?: string;
   sql: string;
 };
 
 export type QueryExplainPayload = QueryRunPayload;
+
+export type QueryCancelPayload = {
+  connectionId?: string | null;
+  requestId: string;
+};
+
+export type QueryCancelResult = {
+  ok: boolean;
+  message: string;
+};
 
 export type QueryColumnMetadata = {
   name: string;

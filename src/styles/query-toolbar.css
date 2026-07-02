@@ -44,6 +44,15 @@
   background: var(--surface-2);
 }
 
+.stop-button:not(:disabled) {
+  border-color: rgba(255, 122, 132, 0.38);
+  color: var(--danger);
+}
+
+.stop-button:not(:disabled):hover {
+  background: rgba(255, 122, 132, 0.1);
+}
+
 .toolbar-button-with-icon {
   display: inline-flex;
   align-items: center;

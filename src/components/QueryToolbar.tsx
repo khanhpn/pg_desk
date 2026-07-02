@@ -1,21 +1,29 @@
+import { isQueryLimit, type QueryLimit } from "@/utils/queryLimit";
+
 type QueryToolbarProps = {
   isRunningQuery: boolean;
   isActiveTabDirty: boolean;
+  selectLimit: QueryLimit;
   queryMessage: string;
   handleRunQuery: () => Promise<void>;
+  handleStopQuery: () => Promise<void>;
   handleExplainQuery: () => Promise<void>;
   formatActiveTabSql: () => void;
   saveActiveTab: () => void;
+  setSelectLimit: (limit: QueryLimit) => void;
 };
 
 export const QueryToolbar = ({
   isRunningQuery,
   isActiveTabDirty,
+  selectLimit,
   queryMessage,
   handleRunQuery,
+  handleStopQuery,
   handleExplainQuery,
   formatActiveTabSql,
   saveActiveTab,
+  setSelectLimit,
 }: QueryToolbarProps): JSX.Element => {
   return (
     <section className="query-toolbar">
@@ -28,7 +36,12 @@ export const QueryToolbar = ({
         {isRunningQuery ? "Running..." : "▶ Run"}
       </button>
 
-      <button className="toolbar-button" type="button">
+      <button
+        className="toolbar-button stop-button"
+        disabled={!isRunningQuery}
+        onClick={handleStopQuery}
+        type="button"
+      >
         ■ Stop
       </button>
 
@@ -67,7 +80,16 @@ export const QueryToolbar = ({
       <label className="limit-label">
         <span>Limit</span>
 
-        <select defaultValue="100">
+        <select
+          value={selectLimit}
+          onChange={(event) => {
+            const nextLimit = Number(event.target.value);
+
+            if (isQueryLimit(nextLimit)) {
+              setSelectLimit(nextLimit);
+            }
+          }}
+        >
           <option value="100">100</option>
           <option value="500">500</option>
           <option value="1000">1000</option>

@@ -51,9 +51,11 @@ const App = () => {
     queryResult,
     queryMessage,
     isRunningQuery,
+    selectLimit,
     tabs,
     activeTabId,
     isActiveTabDirty,
+    setSelectLimit,
     createTab,
     selectTab,
     closeTab,
@@ -61,6 +63,7 @@ const App = () => {
     formatActiveTabSql,
     handleExplainQuery,
     handleRunQuery,
+    handleStopQuery,
     handleOpenRelation,
   } = useSqlQuery(activeConnectionId);
   const { selectedRelationKey, handleSelectRelation } = useRelationSelection(
@@ -164,11 +167,14 @@ const App = () => {
         <QueryToolbar
           isRunningQuery={isRunningQuery}
           isActiveTabDirty={isActiveTabDirty}
+          selectLimit={selectLimit}
           queryMessage={queryMessage}
           handleRunQuery={handleRunQuery}
+          handleStopQuery={handleStopQuery}
           handleExplainQuery={handleExplainQuery}
           formatActiveTabSql={formatActiveTabSql}
           saveActiveTab={saveActiveTab}
+          setSelectLimit={setSelectLimit}
         />
 
         <SqlEditor

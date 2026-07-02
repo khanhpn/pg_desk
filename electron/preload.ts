@@ -83,6 +83,11 @@ type QueryCellUpdateResult = {
   rowCount: number;
 };
 
+type QueryCancelResult = {
+  ok: boolean;
+  message: string;
+};
+
 type PgRelationType = "table" | "view";
 
 type PgRelationInfo = {
@@ -244,8 +249,16 @@ const pgdeskApi = {
     run: (
       sql: string,
       connectionId?: string | null,
+      requestId?: string,
     ): Promise<QueryRunResult> => {
-      return ipcRenderer.invoke("query:run", { sql, connectionId });
+      return ipcRenderer.invoke("query:run", { sql, connectionId, requestId });
+    },
+
+    cancel: (
+      connectionId: string | null,
+      requestId: string,
+    ): Promise<QueryCancelResult> => {
+      return ipcRenderer.invoke("query:cancel", { connectionId, requestId });
     },
 
     explain: (

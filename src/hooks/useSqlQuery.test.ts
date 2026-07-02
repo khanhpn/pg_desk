@@ -1,9 +1,10 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSqlQuery } from "@/hooks/useSqlQuery";
 
 const run = vi.fn();
 const explain = vi.fn();
+const cancel = vi.fn();
 
 const installPgDeskMock = (): void => {
   Object.defineProperty(window, "pgdesk", {
@@ -12,6 +13,7 @@ const installPgDeskMock = (): void => {
       query: {
         run,
         explain,
+        cancel,
       },
     },
   });
@@ -22,6 +24,7 @@ describe("useSqlQuery", () => {
     installPgDeskMock();
     run.mockReset();
     explain.mockReset();
+    cancel.mockReset();
     window.localStorage.clear();
   });
 
@@ -85,10 +88,93 @@ describe("useSqlQuery", () => {
       await result.current.handleRunQuery();
     });
 
-    expect(run).toHaveBeenCalledWith("select 1 as id;", "connection-1");
+    expect(run).toHaveBeenCalledWith(
+      `select *
+from (
+select 1 as id
+) as pgdesk_limited_query
+limit 100;`,
+      "connection-1",
+      expect.any(String),
+    );
     expect(result.current.queryMessage).toBe("SELECT · 1 rows · 5ms");
     expect(result.current.queryResult?.rows).toEqual([{ id: 1 }]);
     expect(result.current.isRunningQuery).toBe(false);
+  });
+
+  it("applies the selected limit when running SELECT SQL", async () => {
+    run.mockResolvedValue({
+      ok: true,
+      message: "ok",
+      columns: ["id"],
+      columnMetadata: [],
+      rows: [{ id: 1 }],
+      rowCount: 1,
+      durationMs: 5,
+      command: "SELECT",
+    });
+    const { result } = renderHook(() => useSqlQuery("connection-1"));
+
+    act(() => {
+      result.current.setSql("select id from users;");
+      result.current.setSelectLimit(500);
+    });
+
+    await act(async () => {
+      await result.current.handleRunQuery();
+    });
+
+    expect(run).toHaveBeenCalledWith(
+      `select *
+from (
+select id from users
+) as pgdesk_limited_query
+limit 500;`,
+      "connection-1",
+      expect.any(String),
+    );
+  });
+
+  it("cancels the active query run", async () => {
+    let resolveRun: ((value: unknown) => void) | null = null;
+    run.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRun = resolve;
+      }),
+    );
+    cancel.mockResolvedValue({ ok: true, message: "cancelled" });
+    const { result } = renderHook(() => useSqlQuery("connection-1"));
+
+    act(() => {
+      result.current.setSql("select pg_sleep(30);");
+    });
+
+    act(() => {
+      void result.current.handleRunQuery();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isRunningQuery).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.handleStopQuery();
+    });
+
+    expect(cancel).toHaveBeenCalledWith("connection-1", expect.any(String));
+    expect(result.current.queryMessage).toBe("Cancelling query...");
+
+    await act(async () => {
+      resolveRun?.({
+        ok: false,
+        message: "canceling statement due to user request",
+        columns: [],
+        columnMetadata: [],
+        rows: [],
+        rowCount: 0,
+        durationMs: 10,
+      });
+    });
   });
 
   it("explains the active SQL against the active connection", async () => {
