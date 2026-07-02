@@ -31,6 +31,12 @@ const sendUpdateStatus = (payload: UpdateStatusPayload): void => {
   mainWindow?.webContents.send("update:status", payload);
 };
 
+export const getQuitAndInstallOptions = (
+  platform: NodeJS.Platform = process.platform,
+): [] | [boolean, boolean] => {
+  return platform === "darwin" ? [] : [true, true];
+};
+
 const formatUpdateErrorMessage = (error: Error): string => {
   if (
     error.message.includes("latest-mac.yml") ||
@@ -51,7 +57,8 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
   log.transports.file.level = "info";
 
   updater.autoDownload = false;
-  updater.autoInstallOnAppQuit = true;
+  updater.autoInstallOnAppQuit = false;
+  updater.autoRunAppAfterInstall = true;
 
   updater.on("checking-for-update", () => {
     sendUpdateStatus({
@@ -138,5 +145,5 @@ export const installAppUpdate = async (): Promise<void> => {
     message: "PGDesk is restarting to install the update...",
   });
 
-  getAutoUpdater().quitAndInstall(false, true);
+  getAutoUpdater().quitAndInstall(...getQuitAndInstallOptions());
 };

@@ -12,6 +12,7 @@ const autoUpdater = Object.assign(new EventEmitter(), {
   logger: null,
   autoDownload: true,
   autoInstallOnAppQuit: false,
+  autoRunAppAfterInstall: false,
   checkForUpdates,
   downloadUpdate,
   quitAndInstall,
@@ -47,10 +48,11 @@ describe("app update service", () => {
     autoUpdater.removeAllListeners();
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.autoRunAppAfterInstall = false;
   });
 
   it("waits for an explicit install action after the update is downloaded", async () => {
-    const { installAppUpdate, registerAppUpdater } =
+    const { getQuitAndInstallOptions, installAppUpdate, registerAppUpdater } =
       await import("@electron/services/app-update-service");
 
     registerAppUpdater({
@@ -58,6 +60,10 @@ describe("app update service", () => {
         send: webContentsSend,
       },
     } as never);
+
+    expect(autoUpdater.autoDownload).toBe(false);
+    expect(autoUpdater.autoInstallOnAppQuit).toBe(false);
+    expect(autoUpdater.autoRunAppAfterInstall).toBe(true);
 
     autoUpdater.emit("update-downloaded", { version: "0.1.23" });
 
@@ -74,6 +80,15 @@ describe("app update service", () => {
       status: "installing",
       message: "PGDesk is restarting to install the update...",
     });
-    expect(quitAndInstall).toHaveBeenCalledWith(false, true);
+    expect(quitAndInstall).toHaveBeenCalledWith(...getQuitAndInstallOptions());
+  });
+
+  it("uses native macOS restart behavior and forced silent restart on NSIS platforms", async () => {
+    const { getQuitAndInstallOptions } =
+      await import("@electron/services/app-update-service");
+
+    expect(getQuitAndInstallOptions("darwin")).toEqual([]);
+    expect(getQuitAndInstallOptions("win32")).toEqual([true, true]);
+    expect(getQuitAndInstallOptions("linux")).toEqual([true, true]);
   });
 });
