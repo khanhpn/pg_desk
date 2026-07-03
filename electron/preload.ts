@@ -42,6 +42,63 @@ type PgDatabaseRestoreResult = {
   filePath?: string;
 };
 
+type PgDatabaseSummary = {
+  name: string;
+};
+
+type PgDatabaseListResult = {
+  ok: boolean;
+  message: string;
+  databases: PgDatabaseSummary[];
+};
+
+type PgBackupFolderSelectionResult = {
+  ok: boolean;
+  message: string;
+  folderPath?: string;
+};
+
+type PgDatabaseMaintenanceItemResult = {
+  name: string;
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
+type PgMultiDatabaseBackupPayload = {
+  connectionId?: string | null;
+  databases: string[];
+  folderPath: string;
+};
+
+type PgMultiDatabaseBackupResult = {
+  ok: boolean;
+  message: string;
+  items: PgDatabaseMaintenanceItemResult[];
+};
+
+type PgRestoreFileEntry = {
+  filePath: string;
+  targetDatabase: string;
+};
+
+type PgRestoreFileSelectionResult = {
+  ok: boolean;
+  message: string;
+  files: PgRestoreFileEntry[];
+};
+
+type PgMultiDatabaseRestorePayload = {
+  connectionId?: string | null;
+  entries: PgRestoreFileEntry[];
+};
+
+type PgMultiDatabaseRestoreResult = {
+  ok: boolean;
+  message: string;
+  items: PgDatabaseMaintenanceItemResult[];
+};
+
 type QueryRunResult = {
   ok: boolean;
   message: string;
@@ -284,6 +341,56 @@ const pgdeskApi = {
       connectionId?: string | null,
     ): Promise<PgDatabaseRestoreResult> => {
       return ipcRenderer.invoke("database:restore", { connectionId });
+    },
+
+    listDatabases: (
+      connectionId?: string | null,
+    ): Promise<PgDatabaseListResult> => {
+      return ipcRenderer.invoke("database:list-databases", { connectionId });
+    },
+
+    chooseBackupFolder: (): Promise<PgBackupFolderSelectionResult> => {
+      return ipcRenderer.invoke("database:choose-backup-folder");
+    },
+
+    chooseRestoreFiles: (): Promise<PgRestoreFileSelectionResult> => {
+      return ipcRenderer.invoke("database:choose-restore-files");
+    },
+
+    backupMany: (
+      payload: PgMultiDatabaseBackupPayload,
+    ): Promise<PgMultiDatabaseBackupResult> => {
+      return ipcRenderer.invoke("database:backup-many", payload);
+    },
+
+    restoreMany: (
+      payload: PgMultiDatabaseRestorePayload,
+    ): Promise<PgMultiDatabaseRestoreResult> => {
+      return ipcRenderer.invoke("database:restore-many", payload);
+    },
+
+    onOpenBackupModal: (callback: () => void): (() => void) => {
+      const listener = (): void => {
+        callback();
+      };
+
+      ipcRenderer.on("database:open-backup-modal", listener);
+
+      return () => {
+        ipcRenderer.removeListener("database:open-backup-modal", listener);
+      };
+    },
+
+    onOpenRestoreModal: (callback: () => void): (() => void) => {
+      const listener = (): void => {
+        callback();
+      };
+
+      ipcRenderer.on("database:open-restore-modal", listener);
+
+      return () => {
+        ipcRenderer.removeListener("database:open-restore-modal", listener);
+      };
     },
   },
 

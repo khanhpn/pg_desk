@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import "@/App.css";
 
 // imports components
@@ -11,6 +11,7 @@ import { AppUpdateToast } from "@/components/AppUpdateToast";
 import { DatabaseMaintenanceToast } from "@/components/DatabaseMaintenanceToast";
 import { TableContextMenu } from "@/components/TableContextMenu";
 import { TableInspectorDrawer } from "@/components/TableInspectorDrawer";
+import { ServerDatabaseMaintenanceModal } from "@/components/ServerDatabaseMaintenanceModal";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 
 // imports hooks
@@ -73,10 +74,25 @@ const App = () => {
   const {
     databaseMaintenanceToast,
     databaseTaskConnectionId,
+    serverMaintenanceModal,
     closeDatabaseMaintenanceToast,
+    closeServerMaintenanceModal,
+    selectAllServerDatabases,
+    clearServerDatabaseSelection,
+    toggleServerDatabase,
+    chooseServerBackupFolder,
+    handleBackupServerDatabases,
+    chooseServerRestoreFiles,
+    toggleRestoreFile,
+    updateRestoreTargetDatabase,
+    handleRestoreServerDatabases,
     handleBackupDatabase,
     handleRestoreDatabase,
-  } = useDatabaseMaintenance({ refreshExplorer });
+  } = useDatabaseMaintenance({
+    refreshExplorer,
+    activeConnectionId,
+    connectedConnectionIds,
+  });
 
   const {
     updateStatus,
@@ -113,6 +129,18 @@ const App = () => {
 
     void refreshExplorer();
   }, [isConnected, refreshExplorer]);
+
+  const activeConnectionLabel = useMemo(() => {
+    const activeProfile = connectionProfiles.find((profile) => {
+      return profile.id === activeConnectionId;
+    });
+
+    if (!activeProfile) {
+      return "No active connection";
+    }
+
+    return `${activeProfile.name} · ${activeProfile.user}@${activeProfile.host}/${activeProfile.database}`;
+  }, [activeConnectionId, connectionProfiles]);
 
   return (
     <div className={appShellClassName}>
@@ -211,6 +239,21 @@ const App = () => {
       <DatabaseMaintenanceToast
         toast={databaseMaintenanceToast}
         closeToast={closeDatabaseMaintenanceToast}
+      />
+
+      <ServerDatabaseMaintenanceModal
+        modal={serverMaintenanceModal}
+        connectionLabel={activeConnectionLabel}
+        closeModal={closeServerMaintenanceModal}
+        selectAllDatabases={selectAllServerDatabases}
+        clearDatabaseSelection={clearServerDatabaseSelection}
+        toggleDatabase={toggleServerDatabase}
+        chooseBackupFolder={chooseServerBackupFolder}
+        runBackup={handleBackupServerDatabases}
+        chooseRestoreFiles={chooseServerRestoreFiles}
+        toggleRestoreFile={toggleRestoreFile}
+        updateRestoreTargetDatabase={updateRestoreTargetDatabase}
+        runRestore={handleRestoreServerDatabases}
       />
 
       {contextMenu && (

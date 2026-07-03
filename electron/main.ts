@@ -65,6 +65,22 @@ const handleCheckForUpdates = (): void => {
   void checkForAppUpdates(true);
 };
 
+const sendMainWindowEvent = (channel: string): void => {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+
+  win.webContents.send(channel);
+};
+
+const handleOpenBackupDatabases = (): void => {
+  sendMainWindowEvent("database:open-backup-modal");
+};
+
+const handleOpenRestoreDatabases = (): void => {
+  sendMainWindowEvent("database:open-restore-modal");
+};
+
 const buildApplicationMenu = (): Menu => {
   const appMenu =
     process.platform === "darwin"
@@ -98,6 +114,15 @@ const buildApplicationMenu = (): Menu => {
     {
       label: "File",
       submenu: [
+        {
+          label: "Backup Databases...",
+          click: handleOpenBackupDatabases,
+        },
+        {
+          label: "Restore Databases...",
+          click: handleOpenRestoreDatabases,
+        },
+        { type: "separator" as const },
         process.platform === "darwin"
           ? { role: "close" as const }
           : { role: "quit" as const },

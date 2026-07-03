@@ -4,6 +4,25 @@ import { useDatabaseMaintenance } from "@/hooks/useDatabaseMaintenance";
 
 const backup = vi.fn();
 const restore = vi.fn();
+const listDatabases = vi.fn();
+const chooseBackupFolder = vi.fn();
+const chooseRestoreFiles = vi.fn();
+const backupMany = vi.fn();
+const restoreMany = vi.fn();
+const onOpenBackupModal = vi.fn(() => {
+  return vi.fn();
+});
+const onOpenRestoreModal = vi.fn(() => {
+  return vi.fn();
+});
+
+const createHookOptions = (refreshExplorer: () => Promise<void>) => {
+  return {
+    refreshExplorer,
+    activeConnectionId: "connection-1",
+    connectedConnectionIds: ["connection-1"],
+  };
+};
 
 const installPgDeskMock = (): void => {
   Object.defineProperty(window, "pgdesk", {
@@ -12,6 +31,13 @@ const installPgDeskMock = (): void => {
       database: {
         backup,
         restore,
+        listDatabases,
+        chooseBackupFolder,
+        chooseRestoreFiles,
+        backupMany,
+        restoreMany,
+        onOpenBackupModal,
+        onOpenRestoreModal,
       },
     },
   });
@@ -22,6 +48,13 @@ describe("useDatabaseMaintenance", () => {
     installPgDeskMock();
     backup.mockReset();
     restore.mockReset();
+    listDatabases.mockReset();
+    chooseBackupFolder.mockReset();
+    chooseRestoreFiles.mockReset();
+    backupMany.mockReset();
+    restoreMany.mockReset();
+    onOpenBackupModal.mockClear();
+    onOpenRestoreModal.mockClear();
     vi.useRealTimers();
   });
 
@@ -32,7 +65,7 @@ describe("useDatabaseMaintenance", () => {
     });
     const refreshExplorer = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDatabaseMaintenance({ refreshExplorer }),
+      useDatabaseMaintenance(createHookOptions(refreshExplorer)),
     );
 
     await act(async () => {
@@ -55,7 +88,7 @@ describe("useDatabaseMaintenance", () => {
     });
     const refreshExplorer = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDatabaseMaintenance({ refreshExplorer }),
+      useDatabaseMaintenance(createHookOptions(refreshExplorer)),
     );
 
     await act(async () => {
@@ -82,7 +115,7 @@ describe("useDatabaseMaintenance", () => {
     });
     const refreshExplorer = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDatabaseMaintenance({ refreshExplorer }),
+      useDatabaseMaintenance(createHookOptions(refreshExplorer)),
     );
 
     await act(async () => {
@@ -106,7 +139,7 @@ describe("useDatabaseMaintenance", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const refreshExplorer = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDatabaseMaintenance({ refreshExplorer }),
+      useDatabaseMaintenance(createHookOptions(refreshExplorer)),
     );
 
     await act(async () => {
@@ -127,7 +160,7 @@ describe("useDatabaseMaintenance", () => {
     });
     const refreshExplorer = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useDatabaseMaintenance({ refreshExplorer }),
+      useDatabaseMaintenance(createHookOptions(refreshExplorer)),
     );
 
     await act(async () => {

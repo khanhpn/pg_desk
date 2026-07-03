@@ -7,10 +7,21 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { PgConnectionProfile } from "@electron/types/connection";
 import type {
+  PgBackupFolderSelectionResult,
   PgDatabaseBackupResult,
+  PgDatabaseListResult,
+  PgDatabaseMaintenanceItemResult,
+  PgDatabaseSummary,
+  PgMultiDatabaseBackupPayload,
+  PgMultiDatabaseBackupResult,
+  PgMultiDatabaseRestorePayload,
+  PgMultiDatabaseRestoreResult,
+  PgRestoreFileEntry,
+  PgRestoreFileSelectionResult,
   PgDatabaseRestoreResult,
 } from "@electron/types/database";
 import { loadConnectionProfiles } from "@electron/services/connection-profile-service";
+import { getActivePostgresPool } from "@electron/services/postgres-connection-service";
 import { getErrorMessage } from "@electron/utils/error";
 
 type PostgresToolName = "pg_dump" | "pg_restore" | "psql";
@@ -31,6 +42,21 @@ type PostgresToolRunner = LocalToolRunner | DockerToolRunner;
 type CommandResult = {
   code: number | null;
   stderr: string;
+};
+
+type QueryableDatabaseClient = {
+  query: (
+    sql: string,
+    values?: unknown[],
+  ) => Promise<{
+    rowCount: number | null;
+    rows?: unknown[];
+  }>;
+};
+
+type PgDatabaseRow = {
+  datname: string;
+  datallowconn: boolean;
 };
 
 const POSTGRES_VERSIONS = ["17", "16", "15", "14", "13", "12"];
@@ -102,8 +128,89 @@ const getDefaultBackupPath = async (
   return path.join(documentsPath, fileName);
 };
 
+export const buildMultiDatabaseBackupFilePath = async (
+  folderPath: string,
+  databaseName: string,
+): Promise<string> => {
+  const dateLabel = formatDateLabel();
+  const version = await getNextBackupVersion(
+    folderPath,
+    databaseName,
+    dateLabel,
+  );
+  const fileName = buildSqlBackupFileName(databaseName, version, dateLabel);
+
+  return path.join(folderPath, fileName);
+};
+
+export const filterConnectableDatabases = (
+  rows: PgDatabaseRow[],
+): PgDatabaseSummary[] => {
+  return rows
+    .filter((row) => {
+      return (
+        row.datallowconn &&
+        row.datname !== "template0" &&
+        row.datname !== "template1"
+      );
+    })
+    .map((row) => {
+      return { name: row.datname };
+    });
+};
+
+export const databaseExists = async (
+  client: QueryableDatabaseClient,
+  databaseName: string,
+): Promise<boolean> => {
+  const result = await client.query(
+    "select 1 from pg_database where datname = $1",
+    [databaseName],
+  );
+
+  return (result.rowCount ?? 0) > 0;
+};
+
+export const buildProfileForDatabase = (
+  profile: PgConnectionProfile,
+  databaseName: string,
+): PgConnectionProfile => {
+  return {
+    ...profile,
+    database: databaseName,
+  };
+};
+
+const quoteIdentifier = (identifier: string): string => {
+  return `"${identifier.replace(/"/g, '""')}"`;
+};
+
+export const getCreateDatabaseSql = (databaseName: string): string => {
+  return `create database ${quoteIdentifier(databaseName)}`;
+};
+
+export const createDatabaseIfMissing = async (
+  client: QueryableDatabaseClient,
+  databaseName: string,
+): Promise<void> => {
+  const exists = await databaseExists(client, databaseName);
+
+  if (exists) {
+    return;
+  }
+
+  await client.query(getCreateDatabaseSql(databaseName));
+};
+
 export const getPgDumpSqlBackupArgs = (): string[] => {
   return ["--format=plain", "--no-owner", "--no-privileges"];
+};
+
+const inferDatabaseNameFromBackupFile = (filePath: string): string => {
+  const baseName = path.basename(filePath).replace(/\.[^.]+$/g, "");
+  const versionedName = baseName.replace(/_v\d+_\d{4}_\d{2}_\d{2}$/g, "");
+
+  return versionedName || baseName || "database";
 };
 
 const showSaveDialog = (
@@ -629,6 +736,258 @@ export const restorePostgresDatabase = async (
     return {
       ok: false,
       message: getErrorMessage(error),
+    };
+  }
+};
+
+export const listPostgresDatabases = async (
+  connectionId?: string | null,
+): Promise<PgDatabaseListResult> => {
+  try {
+    const pool = getActivePostgresPool(connectionId);
+
+    if (!pool) {
+      throw new Error(
+        "Connect to a PostgreSQL database before listing databases.",
+      );
+    }
+
+    const result = await pool.query<PgDatabaseRow>(
+      `
+        select datname, datallowconn
+        from pg_database
+        order by datname
+      `,
+    );
+    const databases = filterConnectableDatabases(result.rows);
+
+    return {
+      ok: true,
+      message:
+        databases.length === 1
+          ? "Found 1 database."
+          : `Found ${databases.length} databases.`,
+      databases,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      databases: [],
+    };
+  }
+};
+
+export const choosePostgresBackupFolder = async (
+  parentWindow: BrowserWindow | null,
+): Promise<PgBackupFolderSelectionResult> => {
+  const openResult = await showOpenDialog(parentWindow, {
+    title: "Choose backup folder",
+    properties: ["openDirectory", "createDirectory"],
+  });
+
+  if (openResult.canceled || !openResult.filePaths[0]) {
+    return {
+      ok: false,
+      message: "Folder selection cancelled",
+    };
+  }
+
+  return {
+    ok: true,
+    message: `Backup folder selected: ${openResult.filePaths[0]}`,
+    folderPath: openResult.filePaths[0],
+  };
+};
+
+export const choosePostgresRestoreFiles = async (
+  parentWindow: BrowserWindow | null,
+): Promise<PgRestoreFileSelectionResult> => {
+  try {
+    const openResult = await showOpenDialog(parentWindow, {
+      title: "Choose restore files or folder",
+      properties: ["openFile", "openDirectory", "multiSelections"],
+      filters: [
+        { name: "PostgreSQL SQL backup", extensions: ["sql"] },
+        { name: "All files", extensions: ["*"] },
+      ],
+    });
+
+    if (openResult.canceled || openResult.filePaths.length === 0) {
+      return {
+        ok: false,
+        message: "Restore file selection cancelled",
+        files: [],
+      };
+    }
+
+    const filePaths: string[] = [];
+
+    for (const selectedPath of openResult.filePaths) {
+      const stat = await fsp.stat(selectedPath);
+
+      if (stat.isDirectory()) {
+        const fileNames = await fsp.readdir(selectedPath);
+        filePaths.push(
+          ...fileNames
+            .filter((fileName) => fileName.toLowerCase().endsWith(".sql"))
+            .map((fileName) => path.join(selectedPath, fileName)),
+        );
+      } else if (selectedPath.toLowerCase().endsWith(".sql")) {
+        filePaths.push(selectedPath);
+      }
+    }
+
+    const files = Array.from(new Set(filePaths))
+      .sort((left, right) => left.localeCompare(right))
+      .map((filePath): PgRestoreFileEntry => {
+        return {
+          filePath,
+          targetDatabase: inferDatabaseNameFromBackupFile(filePath),
+        };
+      });
+
+    return {
+      ok: files.length > 0,
+      message:
+        files.length > 0
+          ? `Selected ${files.length} restore file${
+              files.length === 1 ? "" : "s"
+            }.`
+          : "No .sql restore files were found.",
+      files,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      files: [],
+    };
+  }
+};
+
+export const backupPostgresDatabases = async (
+  payload: PgMultiDatabaseBackupPayload,
+): Promise<PgMultiDatabaseBackupResult> => {
+  try {
+    const profile = await getConnectionProfile(payload.connectionId);
+    const runner = await resolveToolRunner("pg_dump", profile);
+    const items: PgDatabaseMaintenanceItemResult[] = [];
+
+    for (const databaseName of payload.databases) {
+      const databaseProfile = buildProfileForDatabase(profile, databaseName);
+      const filePath = await buildMultiDatabaseBackupFilePath(
+        payload.folderPath,
+        databaseName,
+      );
+
+      try {
+        await runPostgresTool(
+          runner,
+          "pg_dump",
+          databaseProfile,
+          getPgDumpSqlBackupArgs(),
+          {
+            stdoutPath: filePath,
+          },
+        );
+        items.push({
+          name: databaseName,
+          ok: true,
+          message: `Backup saved to ${filePath}`,
+          filePath,
+        });
+      } catch (error) {
+        items.push({
+          name: databaseName,
+          ok: false,
+          message: getErrorMessage(error),
+          filePath,
+        });
+      }
+    }
+
+    const failedItems = items.filter((item) => !item.ok);
+
+    return {
+      ok: failedItems.length === 0,
+      message:
+        failedItems.length === 0
+          ? `Backed up ${items.length} database${items.length === 1 ? "" : "s"}.`
+          : `${failedItems.length} database backup${
+              failedItems.length === 1 ? "" : "s"
+            } failed.`,
+      items,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      items: [],
+    };
+  }
+};
+
+export const restorePostgresDatabases = async (
+  payload: PgMultiDatabaseRestorePayload,
+): Promise<PgMultiDatabaseRestoreResult> => {
+  try {
+    const profile = await getConnectionProfile(payload.connectionId);
+    const pool = getActivePostgresPool(payload.connectionId);
+
+    if (!pool) {
+      throw new Error(
+        "Connect to a PostgreSQL database before restoring databases.",
+      );
+    }
+
+    const runner = await resolveToolRunner("psql", profile);
+    const items: PgDatabaseMaintenanceItemResult[] = [];
+
+    for (const entry of payload.entries) {
+      const databaseProfile = buildProfileForDatabase(
+        profile,
+        entry.targetDatabase,
+      );
+
+      try {
+        await createDatabaseIfMissing(pool, entry.targetDatabase);
+        await runPostgresTool(runner, "psql", databaseProfile, [], {
+          stdinPath: entry.filePath,
+        });
+        items.push({
+          name: entry.targetDatabase,
+          ok: true,
+          message: `Restore completed from ${entry.filePath}`,
+          filePath: entry.filePath,
+        });
+      } catch (error) {
+        items.push({
+          name: entry.targetDatabase,
+          ok: false,
+          message: getErrorMessage(error),
+          filePath: entry.filePath,
+        });
+      }
+    }
+
+    const failedItems = items.filter((item) => !item.ok);
+
+    return {
+      ok: failedItems.length === 0,
+      message:
+        failedItems.length === 0
+          ? `Restored ${items.length} database${items.length === 1 ? "" : "s"}.`
+          : `${failedItems.length} database restore${
+              failedItems.length === 1 ? "" : "s"
+            } failed.`,
+      items,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      items: [],
     };
   }
 };

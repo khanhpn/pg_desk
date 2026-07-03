@@ -42,6 +42,63 @@ type PgDatabaseRestoreResult = {
   filePath?: string;
 };
 
+type PgDatabaseSummary = {
+  name: string;
+};
+
+type PgDatabaseListResult = {
+  ok: boolean;
+  message: string;
+  databases: PgDatabaseSummary[];
+};
+
+type PgBackupFolderSelectionResult = {
+  ok: boolean;
+  message: string;
+  folderPath?: string;
+};
+
+type PgDatabaseMaintenanceItemResult = {
+  name: string;
+  ok: boolean;
+  message: string;
+  filePath?: string;
+};
+
+type PgMultiDatabaseBackupPayload = {
+  connectionId?: string | null;
+  databases: string[];
+  folderPath: string;
+};
+
+type PgMultiDatabaseBackupResult = {
+  ok: boolean;
+  message: string;
+  items: PgDatabaseMaintenanceItemResult[];
+};
+
+type PgRestoreFileEntry = {
+  filePath: string;
+  targetDatabase: string;
+};
+
+type PgRestoreFileSelectionResult = {
+  ok: boolean;
+  message: string;
+  files: PgRestoreFileEntry[];
+};
+
+type PgMultiDatabaseRestorePayload = {
+  connectionId?: string | null;
+  entries: PgRestoreFileEntry[];
+};
+
+type PgMultiDatabaseRestoreResult = {
+  ok: boolean;
+  message: string;
+  items: PgDatabaseMaintenanceItemResult[];
+};
+
 type QueryRunResult = {
   ok: boolean;
   message: string;
@@ -245,6 +302,19 @@ type PgDeskApi = {
   database: {
     backup: (connectionId?: string | null) => Promise<PgDatabaseBackupResult>;
     restore: (connectionId?: string | null) => Promise<PgDatabaseRestoreResult>;
+    listDatabases: (
+      connectionId?: string | null,
+    ) => Promise<PgDatabaseListResult>;
+    chooseBackupFolder: () => Promise<PgBackupFolderSelectionResult>;
+    chooseRestoreFiles: () => Promise<PgRestoreFileSelectionResult>;
+    backupMany: (
+      payload: PgMultiDatabaseBackupPayload,
+    ) => Promise<PgMultiDatabaseBackupResult>;
+    restoreMany: (
+      payload: PgMultiDatabaseRestorePayload,
+    ) => Promise<PgMultiDatabaseRestoreResult>;
+    onOpenBackupModal: (callback: () => void) => () => void;
+    onOpenRestoreModal: (callback: () => void) => () => void;
   };
 
   metadata: {
