@@ -4,6 +4,7 @@ import type { OpenDialogOptions, SaveDialogOptions } from "electron";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import readline from "node:readline";
 import { pipeline } from "node:stream/promises";
 import type { PgConnectionProfile } from "@electron/types/connection";
 import type {
@@ -59,8 +60,57 @@ type PgDatabaseRow = {
   datallowconn: boolean;
 };
 
+type DatabaseMaintenanceAuditAction =
+  | "backup-one"
+  | "restore-one"
+  | "backup-many"
+  | "restore-many";
+
+type DatabaseMaintenanceAuditStatus =
+  | "started"
+  | "succeeded"
+  | "failed"
+  | "safety-warning"
+  | "safety-failed";
+
+type DatabaseMaintenanceAuditConnection = Omit<PgConnectionProfile, "password">;
+
+type DatabaseMaintenanceAuditEvent = {
+  timestamp: string;
+  action: DatabaseMaintenanceAuditAction;
+  status: DatabaseMaintenanceAuditStatus;
+  connection: DatabaseMaintenanceAuditConnection;
+  targets?: string[];
+  message?: string;
+  details?: Record<string, unknown>;
+};
+
+type DatabaseMaintenanceAuditEventInput = {
+  action: DatabaseMaintenanceAuditAction;
+  status: DatabaseMaintenanceAuditStatus;
+  profile: PgConnectionProfile;
+  targets?: string[];
+  message?: string;
+  details?: Record<string, unknown>;
+};
+
+type SqlRestoreScopeScanner = {
+  copyData: boolean;
+  inBlockComment: boolean;
+  inSingleQuote: boolean;
+  inDoubleQuote: boolean;
+  dollarQuoteTag: string | null;
+  tail: string;
+};
+
+type ServerLevelSqlPattern = {
+  label: string;
+  pattern: RegExp;
+};
+
 const POSTGRES_VERSIONS = ["17", "16", "15", "14", "13", "12"];
 const LOCALHOST_NAMES = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
+const SYSTEM_DATABASE_NAMES = new Set(["postgres", "template0", "template1"]);
 
 const formatDateLabel = (): string => {
   return new Date().toISOString().slice(0, 10).replace(/-/g, "_");
@@ -148,15 +198,69 @@ export const filterConnectableDatabases = (
 ): PgDatabaseSummary[] => {
   return rows
     .filter((row) => {
-      return (
-        row.datallowconn &&
-        row.datname !== "template0" &&
-        row.datname !== "template1"
-      );
+      return row.datallowconn && !SYSTEM_DATABASE_NAMES.has(row.datname);
     })
     .map((row) => {
       return { name: row.datname };
     });
+};
+
+const toAuditConnection = (
+  profile: PgConnectionProfile,
+): DatabaseMaintenanceAuditConnection => {
+  return {
+    id: profile.id,
+    name: profile.name,
+    host: profile.host,
+    port: profile.port,
+    database: profile.database,
+    user: profile.user,
+    ssl: profile.ssl,
+  };
+};
+
+export const buildDatabaseMaintenanceAuditEvent = ({
+  action,
+  status,
+  profile,
+  targets,
+  message,
+  details,
+}: DatabaseMaintenanceAuditEventInput): DatabaseMaintenanceAuditEvent => {
+  return {
+    timestamp: new Date().toISOString(),
+    action,
+    status,
+    connection: toAuditConnection(profile),
+    targets,
+    message,
+    details,
+  };
+};
+
+const getDatabaseMaintenanceAuditLogPath = (): string => {
+  return path.join(app.getPath("userData"), "database-maintenance-audit.jsonl");
+};
+
+const writeDatabaseMaintenanceAuditEvent = async (
+  event: DatabaseMaintenanceAuditEvent,
+): Promise<void> => {
+  const auditLogPath = getDatabaseMaintenanceAuditLogPath();
+
+  await fsp.mkdir(path.dirname(auditLogPath), { recursive: true });
+  await fsp.appendFile(auditLogPath, `${JSON.stringify(event)}\n`, "utf-8");
+};
+
+const recordDatabaseMaintenanceAuditEvent = async (
+  input: DatabaseMaintenanceAuditEventInput,
+): Promise<void> => {
+  try {
+    await writeDatabaseMaintenanceAuditEvent(
+      buildDatabaseMaintenanceAuditEvent(input),
+    );
+  } catch (error) {
+    console.error("Failed to write database maintenance audit event:", error);
+  }
 };
 
 export const databaseExists = async (
@@ -169,6 +273,59 @@ export const databaseExists = async (
   );
 
   return (result.rowCount ?? 0) > 0;
+};
+
+const listDatabaseRows = async (
+  client: QueryableDatabaseClient,
+): Promise<PgDatabaseRow[]> => {
+  const result = await client.query(
+    `
+      select datname, datallowconn
+      from pg_database
+      order by datname
+    `,
+  );
+
+  return (result.rows ?? []) as PgDatabaseRow[];
+};
+
+export const getMissingSelectedDatabasesAfterBackup = (
+  beforeRows: PgDatabaseRow[],
+  afterRows: PgDatabaseRow[],
+  selectedDatabaseNames: string[],
+): string[] => {
+  const beforeNames = new Set(beforeRows.map((row) => row.datname));
+  const afterNames = new Set(afterRows.map((row) => row.datname));
+
+  return selectedDatabaseNames.filter((databaseName) => {
+    return beforeNames.has(databaseName) && !afterNames.has(databaseName);
+  });
+};
+
+const getDatabaseNames = (rows: PgDatabaseRow[]): string[] => {
+  return rows.map((row) => row.datname);
+};
+
+const getRemovedDatabaseNames = (
+  beforeRows: PgDatabaseRow[],
+  afterRows: PgDatabaseRow[],
+): string[] => {
+  const afterNames = new Set(afterRows.map((row) => row.datname));
+
+  return beforeRows
+    .map((row) => row.datname)
+    .filter((databaseName) => !afterNames.has(databaseName));
+};
+
+const getAddedDatabaseNames = (
+  beforeRows: PgDatabaseRow[],
+  afterRows: PgDatabaseRow[],
+): string[] => {
+  const beforeNames = new Set(beforeRows.map((row) => row.datname));
+
+  return afterRows
+    .map((row) => row.datname)
+    .filter((databaseName) => !beforeNames.has(databaseName));
 };
 
 export const buildProfileForDatabase = (
@@ -204,6 +361,190 @@ export const createDatabaseIfMissing = async (
 
 export const getPgDumpSqlBackupArgs = (): string[] => {
   return ["--format=plain", "--no-owner", "--no-privileges"];
+};
+
+export const getPsqlPlainRestoreArgs = (): string[] => {
+  return ["--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--single-transaction"];
+};
+
+const SERVER_LEVEL_SQL_PATTERNS: ServerLevelSqlPattern[] = [
+  {
+    label: "role/user changes",
+    pattern: /\b(?:create|alter|drop)\s+(?:role|user)\b/i,
+  },
+  {
+    label: "database changes",
+    pattern: /\b(?:create|alter|drop)\s+database\b/i,
+  },
+  {
+    label: "tablespace changes",
+    pattern: /\b(?:create|alter|drop)\s+tablespace\b/i,
+  },
+];
+
+const createSqlRestoreScopeScanner = (): SqlRestoreScopeScanner => ({
+  copyData: false,
+  inBlockComment: false,
+  inSingleQuote: false,
+  inDoubleQuote: false,
+  dollarQuoteTag: null,
+  tail: "",
+});
+
+const findDollarQuoteTag = (value: string, index: number): string | null => {
+  const match = /^\$[A-Za-z_][A-Za-z_0-9]*\$|^\$\$/.exec(value.slice(index));
+
+  return match?.[0] ?? null;
+};
+
+const scrubSqlLine = (
+  line: string,
+  scanner: SqlRestoreScopeScanner,
+): string => {
+  let scrubbed = "";
+
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const nextChar = line[index + 1];
+
+    if (scanner.inBlockComment) {
+      if (char === "*" && nextChar === "/") {
+        scanner.inBlockComment = false;
+        index += 1;
+      }
+      scrubbed += " ";
+      continue;
+    }
+
+    if (scanner.dollarQuoteTag) {
+      if (line.startsWith(scanner.dollarQuoteTag, index)) {
+        index += scanner.dollarQuoteTag.length - 1;
+        scanner.dollarQuoteTag = null;
+      }
+      scrubbed += " ";
+      continue;
+    }
+
+    if (scanner.inSingleQuote) {
+      if (char === "'" && nextChar === "'") {
+        index += 1;
+      } else if (char === "'") {
+        scanner.inSingleQuote = false;
+      }
+      scrubbed += " ";
+      continue;
+    }
+
+    if (scanner.inDoubleQuote) {
+      if (char === '"' && nextChar === '"') {
+        index += 1;
+      } else if (char === '"') {
+        scanner.inDoubleQuote = false;
+      }
+      scrubbed += " ";
+      continue;
+    }
+
+    if (char === "/" && nextChar === "*") {
+      scanner.inBlockComment = true;
+      scrubbed += " ";
+      index += 1;
+      continue;
+    }
+
+    if (char === "-" && nextChar === "-") {
+      break;
+    }
+
+    if (char === "'") {
+      scanner.inSingleQuote = true;
+      scrubbed += " ";
+      continue;
+    }
+
+    if (char === '"') {
+      scanner.inDoubleQuote = true;
+      scrubbed += " ";
+      continue;
+    }
+
+    const dollarQuoteTag = findDollarQuoteTag(line, index);
+
+    if (dollarQuoteTag) {
+      scanner.dollarQuoteTag = dollarQuoteTag;
+      scrubbed += " ";
+      index += dollarQuoteTag.length - 1;
+      continue;
+    }
+
+    scrubbed += char;
+  }
+
+  return scrubbed;
+};
+
+const getServerLevelSqlViolation = (
+  scrubbedSql: string,
+): string | undefined => {
+  return SERVER_LEVEL_SQL_PATTERNS.find(({ pattern }) => {
+    return pattern.test(scrubbedSql);
+  })?.label;
+};
+
+const scanSqlRestoreLine = (
+  line: string,
+  scanner: SqlRestoreScopeScanner,
+): void => {
+  if (scanner.copyData) {
+    if (line === "\\.") {
+      scanner.copyData = false;
+    }
+    return;
+  }
+
+  if (/^\s*\\(?:connect|c)(?:\s|$)/i.test(line)) {
+    throw new Error(
+      "Restore file contains server-level statements and cannot be restored safely.",
+    );
+  }
+
+  const scrubbedLine = scrubSqlLine(line, scanner);
+  scanner.tail = `${scanner.tail}\n${scrubbedLine}`.slice(-1200);
+
+  const violation = getServerLevelSqlViolation(scanner.tail);
+
+  if (violation) {
+    throw new Error(
+      `Restore file contains server-level statements (${violation}) and cannot be restored safely.`,
+    );
+  }
+
+  if (/\bcopy\b[\s\S]*\bfrom\s+stdin\s*;/i.test(scanner.tail)) {
+    scanner.copyData = true;
+    scanner.tail = "";
+  }
+};
+
+export const assertDatabaseScopedSqlRestore = (sql: string): void => {
+  const scanner = createSqlRestoreScopeScanner();
+
+  for (const line of sql.split(/\r?\n/)) {
+    scanSqlRestoreLine(line, scanner);
+  }
+};
+
+const assertDatabaseScopedSqlRestoreFile = async (
+  filePath: string,
+): Promise<void> => {
+  const scanner = createSqlRestoreScopeScanner();
+  const lines = readline.createInterface({
+    input: fs.createReadStream(filePath),
+    crlfDelay: Infinity,
+  });
+
+  for await (const line of lines) {
+    scanSqlRestoreLine(line, scanner);
+  }
 };
 
 const inferDatabaseNameFromBackupFile = (filePath: string): string => {
@@ -636,8 +977,11 @@ export const backupPostgresDatabase = async (
   parentWindow: BrowserWindow | null,
   connectionId?: string | null,
 ): Promise<PgDatabaseBackupResult> => {
+  let auditProfile: PgConnectionProfile | null = null;
+
   try {
     const profile = await getConnectionProfile(connectionId);
+    auditProfile = profile;
     const saveResult = await showSaveDialog(parentWindow, {
       title: "Save database backup",
       defaultPath: await getDefaultBackupPath(profile),
@@ -656,6 +1000,16 @@ export const backupPostgresDatabase = async (
 
     const runner = await resolveToolRunner("pg_dump", profile);
 
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "backup-one",
+      status: "started",
+      profile,
+      targets: [profile.database],
+      details: {
+        filePath: saveResult.filePath,
+      },
+    });
+
     await runPostgresTool(
       runner,
       "pg_dump",
@@ -666,12 +1020,33 @@ export const backupPostgresDatabase = async (
       },
     );
 
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "backup-one",
+      status: "succeeded",
+      profile,
+      targets: [profile.database],
+      message: `Backup saved to ${saveResult.filePath}`,
+      details: {
+        filePath: saveResult.filePath,
+      },
+    });
+
     return {
       ok: true,
       message: `Backup saved to ${saveResult.filePath}`,
       filePath: saveResult.filePath,
     };
   } catch (error) {
+    if (auditProfile) {
+      await recordDatabaseMaintenanceAuditEvent({
+        action: "backup-one",
+        status: "failed",
+        profile: auditProfile,
+        targets: [auditProfile.database],
+        message: getErrorMessage(error),
+      });
+    }
+
     return {
       ok: false,
       message: getErrorMessage(error),
@@ -683,8 +1058,11 @@ export const restorePostgresDatabase = async (
   parentWindow: BrowserWindow | null,
   connectionId?: string | null,
 ): Promise<PgDatabaseRestoreResult> => {
+  let auditProfile: PgConnectionProfile | null = null;
+
   try {
     const profile = await getConnectionProfile(connectionId);
+    auditProfile = profile;
     const openResult = await showOpenDialog(parentWindow, {
       title: "Choose database backup",
       properties: ["openFile"],
@@ -715,17 +1093,44 @@ export const restorePostgresDatabase = async (
       profile,
     );
 
+    if (isSqlFile) {
+      await assertDatabaseScopedSqlRestoreFile(inputPath);
+    }
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "restore-one",
+      status: "started",
+      profile,
+      targets: [profile.database],
+      details: {
+        filePath: inputPath,
+        format: isSqlFile ? "sql" : "custom",
+      },
+    });
+
     await runPostgresTool(
       runner,
       isSqlFile ? "psql" : "pg_restore",
       profile,
       isSqlFile
-        ? []
+        ? getPsqlPlainRestoreArgs()
         : ["--clean", "--if-exists", "--no-owner", "--no-privileges"],
       {
         stdinPath: inputPath,
       },
     );
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "restore-one",
+      status: "succeeded",
+      profile,
+      targets: [profile.database],
+      message: `Restore completed from ${inputPath}`,
+      details: {
+        filePath: inputPath,
+        format: isSqlFile ? "sql" : "custom",
+      },
+    });
 
     return {
       ok: true,
@@ -733,6 +1138,16 @@ export const restorePostgresDatabase = async (
       filePath: inputPath,
     };
   } catch (error) {
+    if (auditProfile) {
+      await recordDatabaseMaintenanceAuditEvent({
+        action: "restore-one",
+        status: "failed",
+        profile: auditProfile,
+        targets: [auditProfile.database],
+        message: getErrorMessage(error),
+      });
+    }
+
     return {
       ok: false,
       message: getErrorMessage(error),
@@ -752,14 +1167,8 @@ export const listPostgresDatabases = async (
       );
     }
 
-    const result = await pool.query<PgDatabaseRow>(
-      `
-        select datname, datallowconn
-        from pg_database
-        order by datname
-      `,
-    );
-    const databases = filterConnectableDatabases(result.rows);
+    const rows = await listDatabaseRows(pool);
+    const databases = filterConnectableDatabases(rows);
 
     return {
       ok: true,
@@ -869,10 +1278,26 @@ export const choosePostgresRestoreFiles = async (
 export const backupPostgresDatabases = async (
   payload: PgMultiDatabaseBackupPayload,
 ): Promise<PgMultiDatabaseBackupResult> => {
+  let auditProfile: PgConnectionProfile | null = null;
+
   try {
     const profile = await getConnectionProfile(payload.connectionId);
+    auditProfile = profile;
+    const pool = getActivePostgresPool(payload.connectionId);
     const runner = await resolveToolRunner("pg_dump", profile);
     const items: PgDatabaseMaintenanceItemResult[] = [];
+    const databaseRowsBefore = pool ? await listDatabaseRows(pool) : [];
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "backup-many",
+      status: "started",
+      profile,
+      targets: payload.databases,
+      details: {
+        folderPath: payload.folderPath,
+        databaseInventoryBefore: getDatabaseNames(databaseRowsBefore),
+      },
+    });
 
     for (const databaseName of payload.databases) {
       const databaseProfile = buildProfileForDatabase(profile, databaseName);
@@ -908,6 +1333,75 @@ export const backupPostgresDatabases = async (
     }
 
     const failedItems = items.filter((item) => !item.ok);
+    const databaseRowsAfter = pool ? await listDatabaseRows(pool) : [];
+    const missingSelectedDatabases = pool
+      ? getMissingSelectedDatabasesAfterBackup(
+          databaseRowsBefore,
+          databaseRowsAfter,
+          payload.databases,
+        )
+      : [];
+    const removedDatabases = pool
+      ? getRemovedDatabaseNames(databaseRowsBefore, databaseRowsAfter)
+      : [];
+    const addedDatabases = pool
+      ? getAddedDatabaseNames(databaseRowsBefore, databaseRowsAfter)
+      : [];
+
+    if (addedDatabases.length > 0 || removedDatabases.length > 0) {
+      await recordDatabaseMaintenanceAuditEvent({
+        action: "backup-many",
+        status:
+          missingSelectedDatabases.length > 0
+            ? "safety-failed"
+            : "safety-warning",
+        profile,
+        targets: payload.databases,
+        message:
+          missingSelectedDatabases.length > 0
+            ? `Selected database disappeared after backup: ${missingSelectedDatabases.join(
+                ", ",
+              )}`
+            : "Database inventory changed while backup was running.",
+        details: {
+          databaseInventoryBefore: getDatabaseNames(databaseRowsBefore),
+          databaseInventoryAfter: getDatabaseNames(databaseRowsAfter),
+          addedDatabases,
+          removedDatabases,
+          missingSelectedDatabases,
+          items,
+        },
+      });
+    }
+
+    if (missingSelectedDatabases.length > 0) {
+      return {
+        ok: false,
+        message: `Critical: selected database disappeared after backup: ${missingSelectedDatabases.join(
+          ", ",
+        )}. Check the audit log before running restore.`,
+        items,
+      };
+    }
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "backup-many",
+      status: failedItems.length === 0 ? "succeeded" : "failed",
+      profile,
+      targets: payload.databases,
+      message:
+        failedItems.length === 0
+          ? `Backed up ${items.length} database${items.length === 1 ? "" : "s"}.`
+          : `${failedItems.length} database backup${
+              failedItems.length === 1 ? "" : "s"
+            } failed.`,
+      details: {
+        folderPath: payload.folderPath,
+        databaseInventoryBefore: getDatabaseNames(databaseRowsBefore),
+        databaseInventoryAfter: getDatabaseNames(databaseRowsAfter),
+        items,
+      },
+    });
 
     return {
       ok: failedItems.length === 0,
@@ -920,6 +1414,19 @@ export const backupPostgresDatabases = async (
       items,
     };
   } catch (error) {
+    if (auditProfile) {
+      await recordDatabaseMaintenanceAuditEvent({
+        action: "backup-many",
+        status: "failed",
+        profile: auditProfile,
+        targets: payload.databases,
+        message: getErrorMessage(error),
+        details: {
+          folderPath: payload.folderPath,
+        },
+      });
+    }
+
     return {
       ok: false,
       message: getErrorMessage(error),
@@ -931,8 +1438,11 @@ export const backupPostgresDatabases = async (
 export const restorePostgresDatabases = async (
   payload: PgMultiDatabaseRestorePayload,
 ): Promise<PgMultiDatabaseRestoreResult> => {
+  let auditProfile: PgConnectionProfile | null = null;
+
   try {
     const profile = await getConnectionProfile(payload.connectionId);
+    auditProfile = profile;
     const pool = getActivePostgresPool(payload.connectionId);
 
     if (!pool) {
@@ -943,6 +1453,18 @@ export const restorePostgresDatabases = async (
 
     const runner = await resolveToolRunner("psql", profile);
     const items: PgDatabaseMaintenanceItemResult[] = [];
+    const databaseRowsBefore = await listDatabaseRows(pool);
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "restore-many",
+      status: "started",
+      profile,
+      targets: payload.entries.map((entry) => entry.targetDatabase),
+      details: {
+        files: payload.entries.map((entry) => entry.filePath),
+        databaseInventoryBefore: getDatabaseNames(databaseRowsBefore),
+      },
+    });
 
     for (const entry of payload.entries) {
       const databaseProfile = buildProfileForDatabase(
@@ -952,9 +1474,16 @@ export const restorePostgresDatabases = async (
 
       try {
         await createDatabaseIfMissing(pool, entry.targetDatabase);
-        await runPostgresTool(runner, "psql", databaseProfile, [], {
-          stdinPath: entry.filePath,
-        });
+        await assertDatabaseScopedSqlRestoreFile(entry.filePath);
+        await runPostgresTool(
+          runner,
+          "psql",
+          databaseProfile,
+          getPsqlPlainRestoreArgs(),
+          {
+            stdinPath: entry.filePath,
+          },
+        );
         items.push({
           name: entry.targetDatabase,
           ok: true,
@@ -972,6 +1501,34 @@ export const restorePostgresDatabases = async (
     }
 
     const failedItems = items.filter((item) => !item.ok);
+    const databaseRowsAfter = await listDatabaseRows(pool);
+
+    await recordDatabaseMaintenanceAuditEvent({
+      action: "restore-many",
+      status: failedItems.length === 0 ? "succeeded" : "failed",
+      profile,
+      targets: payload.entries.map((entry) => entry.targetDatabase),
+      message:
+        failedItems.length === 0
+          ? `Restored ${items.length} database${items.length === 1 ? "" : "s"}.`
+          : `${failedItems.length} database restore${
+              failedItems.length === 1 ? "" : "s"
+            } failed.`,
+      details: {
+        files: payload.entries.map((entry) => entry.filePath),
+        databaseInventoryBefore: getDatabaseNames(databaseRowsBefore),
+        databaseInventoryAfter: getDatabaseNames(databaseRowsAfter),
+        addedDatabases: getAddedDatabaseNames(
+          databaseRowsBefore,
+          databaseRowsAfter,
+        ),
+        removedDatabases: getRemovedDatabaseNames(
+          databaseRowsBefore,
+          databaseRowsAfter,
+        ),
+        items,
+      },
+    });
 
     return {
       ok: failedItems.length === 0,
@@ -984,6 +1541,19 @@ export const restorePostgresDatabases = async (
       items,
     };
   } catch (error) {
+    if (auditProfile) {
+      await recordDatabaseMaintenanceAuditEvent({
+        action: "restore-many",
+        status: "failed",
+        profile: auditProfile,
+        targets: payload.entries.map((entry) => entry.targetDatabase),
+        message: getErrorMessage(error),
+        details: {
+          files: payload.entries.map((entry) => entry.filePath),
+        },
+      });
+    }
+
     return {
       ok: false,
       message: getErrorMessage(error),

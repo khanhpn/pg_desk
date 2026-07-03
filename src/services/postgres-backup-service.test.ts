@@ -2,14 +2,18 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  assertDatabaseScopedSqlRestore,
+  buildDatabaseMaintenanceAuditEvent,
   buildSqlBackupFileName,
   databaseExists,
+  getMissingSelectedDatabasesAfterBackup,
   filterConnectableDatabases,
   buildMultiDatabaseBackupFilePath,
   buildProfileForDatabase,
   createDatabaseIfMissing,
   getCreateDatabaseSql,
   getPgDumpSqlBackupArgs,
+  getPsqlPlainRestoreArgs,
   selectDockerContainerFromPsOutput,
 } from "@electron/services/postgres-backup-service";
 import type { PgConnectionProfile } from "@electron/types/connection";
@@ -35,6 +39,37 @@ describe("getPgDumpSqlBackupArgs", () => {
   });
 });
 
+describe("getPsqlPlainRestoreArgs", () => {
+  it("stops on errors and restores plain SQL atomically", () => {
+    expect(getPsqlPlainRestoreArgs()).toEqual([
+      "--no-psqlrc",
+      "--set",
+      "ON_ERROR_STOP=on",
+      "--single-transaction",
+    ]);
+  });
+});
+
+describe("assertDatabaseScopedSqlRestore", () => {
+  it("rejects role-level SQL that could disable the login used by applications", () => {
+    expect(() =>
+      assertDatabaseScopedSqlRestore(`
+        create table users (id integer);
+        alter role postgres with nologin;
+      `),
+    ).toThrow(/server-level statements/i);
+  });
+
+  it("rejects psql connect commands that can leave the selected target database", () => {
+    expect(() =>
+      assertDatabaseScopedSqlRestore(`
+        \\connect postgres
+        create table users (id integer);
+      `),
+    ).toThrow(/server-level statements/i);
+  });
+});
+
 describe("buildSqlBackupFileName", () => {
   it("uses database name, version, date label, and .sql extension", () => {
     expect(buildSqlBackupFileName("sales db", 3, "2026_07_01")).toBe(
@@ -49,11 +84,70 @@ describe("filterConnectableDatabases", () => {
       filterConnectableDatabases([
         { datname: "template0", datallowconn: false },
         { datname: "template1", datallowconn: true },
+        { datname: "postgres", datallowconn: true },
         { datname: "auth", datallowconn: true },
         { datname: "analytics", datallowconn: false },
         { datname: "billing", datallowconn: true },
       ]),
     ).toEqual([{ name: "auth" }, { name: "billing" }]);
+  });
+});
+
+describe("buildDatabaseMaintenanceAuditEvent", () => {
+  it("records maintenance context without leaking passwords", () => {
+    const event = buildDatabaseMaintenanceAuditEvent({
+      action: "backup-many",
+      status: "started",
+      profile: createProfile(5432),
+      targets: ["auth"],
+      details: {
+        folderPath: "/tmp/backups",
+      },
+    });
+
+    expect(event).toMatchObject({
+      action: "backup-many",
+      status: "started",
+      connection: {
+        id: "auth",
+        name: "auth",
+        host: "localhost",
+        port: 5432,
+        database: "auth",
+        user: "root",
+        ssl: false,
+      },
+      targets: ["auth"],
+      details: {
+        folderPath: "/tmp/backups",
+      },
+    });
+    expect(JSON.stringify(event)).not.toContain("secret");
+  });
+});
+
+describe("getMissingSelectedDatabasesAfterBackup", () => {
+  it("detects selected databases that existed before backup but disappeared after backup", () => {
+    expect(
+      getMissingSelectedDatabasesAfterBackup(
+        [
+          { datname: "auth", datallowconn: true },
+          { datname: "billing", datallowconn: true },
+        ],
+        [{ datname: "billing", datallowconn: true }],
+        ["auth", "billing"],
+      ),
+    ).toEqual(["auth"]);
+  });
+
+  it("ignores selected databases that were already missing before backup", () => {
+    expect(
+      getMissingSelectedDatabasesAfterBackup(
+        [{ datname: "billing", datallowconn: true }],
+        [{ datname: "billing", datallowconn: true }],
+        ["auth", "billing"],
+      ),
+    ).toEqual([]);
   });
 });
 
