@@ -118,12 +118,23 @@ export const SqlEditor = ({
         theme={githubDark}
         basicSetup={{
           lineNumbers: true,
-          foldGutter: false,
+          foldGutter: true,
+          drawSelection: true,
+          dropCursor: true,
+          allowMultipleSelections: true,
+          indentOnInput: true,
           highlightActiveLine: true,
           highlightActiveLineGutter: true,
-          autocompletion: false,
+          autocompletion: true,
+          rectangularSelection: true,
+          crosshairCursor: true,
+          highlightSelectionMatches: true,
           bracketMatching: true,
           closeBrackets: true,
+          searchKeymap: true,
+          completionKeymap: true,
+          foldKeymap: true,
+          tabSize: 2,
         }}
         extensions={extensions}
         onChange={handleEditorChange}
