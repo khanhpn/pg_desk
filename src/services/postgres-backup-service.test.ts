@@ -14,6 +14,7 @@ import {
   buildMultiDatabaseBackupFilePath,
   buildProfileForDatabase,
   createDatabaseIfMissing,
+  createDatabaseScopedSqlRestoreFile,
   getCreateDatabaseSql,
   getPlainRestorePreludeSql,
   getPgDumpSqlBackupArgs,
@@ -145,15 +146,14 @@ describe("assertDatabaseScopedSqlRestore", () => {
 });
 
 describe("toDatabaseScopedSqlRestore", () => {
-  it("rewrites pg_restore data file placeholders to client-side copy commands", () => {
+  it("leaves pg_restore data file placeholders for file-backed restore expansion", () => {
     expect(
       toDatabaseScopedSqlRestore(
         "COPY public.actor (actor_id, first_name) FROM '$$PATH$$/3057.dat';",
         "restore",
-        "/Users/khanh/Downloads/dvdrental",
       ),
     ).toBe(
-      "\\copy public.actor (actor_id, first_name) FROM '/Users/khanh/Downloads/dvdrental/3057.dat'",
+      "COPY public.actor (actor_id, first_name) FROM '$$PATH$$/3057.dat';",
     );
   });
 
@@ -196,6 +196,41 @@ describe("toDatabaseScopedSqlRestore", () => {
         "restore",
       ),
     ).not.toMatch(/CREATE DATABASE|\\connect/i);
+  });
+});
+
+describe("createDatabaseScopedSqlRestoreFile", () => {
+  it("inlines pg_restore data files so restores work outside the host filesystem", async () => {
+    const tempFolderPath = await fsp.mkdtemp(
+      path.join(os.tmpdir(), "pgdesk-restore-data-"),
+    );
+    const sqlPath = path.join(tempFolderPath, "restore.sql");
+    const dataPath = path.join(tempFolderPath, "3057.dat");
+
+    await fsp.writeFile(
+      sqlPath,
+      "COPY public.actor (actor_id, first_name) FROM '$$PATH$$/3057.dat';\n",
+      "utf-8",
+    );
+    await fsp.writeFile(dataPath, "1\tPENELOPE\n2\tNICK\n", "utf-8");
+
+    try {
+      const scopedPath = await createDatabaseScopedSqlRestoreFile(
+        sqlPath,
+        "restore",
+      );
+      const scopedSql = await fsp.readFile(scopedPath, "utf-8");
+
+      await fsp.rm(scopedPath, { force: true });
+
+      expect(scopedSql).toContain(
+        "COPY public.actor (actor_id, first_name) FROM stdin;",
+      );
+      expect(scopedSql).toContain("1\tPENELOPE\n2\tNICK\n\\.\n");
+      expect(scopedSql).not.toContain("$$PATH$$");
+    } finally {
+      await fsp.rm(tempFolderPath, { recursive: true, force: true });
+    }
   });
 });
 

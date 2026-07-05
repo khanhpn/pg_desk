@@ -376,7 +376,7 @@ export const useDatabaseMaintenance = ({
     }
 
     const confirmed = window.confirm(
-      "Restore selected SQL files? PgDesk will create missing target databases before restore.",
+      "Restore selected SQL files? PgDesk will create missing target databases, then drop and replace existing objects in each target database.",
     );
 
     if (!confirmed) {

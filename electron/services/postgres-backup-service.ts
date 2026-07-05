@@ -1,8 +1,10 @@
 import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog } from "electron";
 import type { OpenDialogOptions, SaveDialogOptions } from "electron";
+import { once } from "node:events";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { finished, pipeline } from "node:stream/promises";
@@ -48,9 +50,11 @@ type CommandResult = {
 type StreamResult =
   | {
       ok: true;
+      name: "stdin" | "stdout";
     }
   | {
       ok: false;
+      name: "stdin" | "stdout";
       error: unknown;
     };
 
@@ -251,6 +255,10 @@ export const buildDatabaseMaintenanceAuditEvent = ({
 
 const getDatabaseMaintenanceAuditLogPath = (): string => {
   return path.join(app.getPath("userData"), "database-maintenance-audit.jsonl");
+};
+
+const getTempPath = (): string => {
+  return app?.getPath?.("temp") ?? os.tmpdir();
 };
 
 const writeDatabaseMaintenanceAuditEvent = async (
@@ -597,31 +605,28 @@ const getDatabaseWrapperName = (line: string): string | null => {
   );
 };
 
-const escapePsqlSingleQuotedValue = (value: string): string => {
-  return value.replace(/'/g, "''");
-};
-
-const rewritePgRestoreDataPathCopy = (
+const getPgRestoreDataPathCopy = (
   line: string,
-  dataDirectory?: string,
-): string => {
-  if (!dataDirectory) {
-    return line;
-  }
-
+): { indent: string; copyTarget: string; relativeFilePath: string } | null => {
   const match =
     /^(\s*)COPY\s+([\s\S]+?)\s+FROM\s+'\$\$PATH\$\$\/([^']+)';\s*$/i.exec(line);
 
   if (!match) {
-    return line;
+    return null;
   }
 
   const [, indent, copyTarget, relativeFilePath] = match;
-  const dataFilePath = path.join(dataDirectory, relativeFilePath);
 
-  return `${indent}\\copy ${copyTarget} FROM '${escapePsqlSingleQuotedValue(
-    dataFilePath,
-  )}'`;
+  return { indent, copyTarget, relativeFilePath };
+};
+
+const writeRestoreChunk = async (
+  output: fs.WriteStream,
+  chunk: string | Buffer,
+): Promise<void> => {
+  if (!output.write(chunk)) {
+    await once(output, "drain");
+  }
 };
 
 const isConnectDatabaseWrapper = (line: string): boolean => {
@@ -706,7 +711,6 @@ export const assertDatabaseScopedSqlRestore = (
 export const toDatabaseScopedSqlRestore = (
   sql: string,
   targetDatabase: string,
-  dataDirectory?: string,
 ): string => {
   const scanner = createSqlRestoreScopeScanner(targetDatabase);
   const outputLines: string[] = [];
@@ -715,19 +719,54 @@ export const toDatabaseScopedSqlRestore = (
     scanSqlRestoreLine(line, scanner);
 
     if (!getDatabaseWrapperName(line)) {
-      outputLines.push(rewritePgRestoreDataPathCopy(line, dataDirectory));
+      outputLines.push(line);
     }
   }
 
   return outputLines.join("\n");
 };
 
-const createDatabaseScopedSqlRestoreFile = async (
+const writePgRestoreInlineDataCopy = async (
+  output: fs.WriteStream,
+  line: string,
+  dataDirectory: string,
+): Promise<boolean> => {
+  const dataPathCopy = getPgRestoreDataPathCopy(line);
+
+  if (!dataPathCopy) {
+    return false;
+  }
+
+  const dataFilePath = path.join(dataDirectory, dataPathCopy.relativeFilePath);
+  let lastChunkEndsWithNewline = true;
+
+  await writeRestoreChunk(
+    output,
+    `${dataPathCopy.indent}COPY ${dataPathCopy.copyTarget} FROM stdin;\n`,
+  );
+
+  for await (const chunk of fs.createReadStream(dataFilePath)) {
+    if (Buffer.isBuffer(chunk) && chunk.length > 0) {
+      lastChunkEndsWithNewline = chunk[chunk.length - 1] === 10;
+    }
+
+    await writeRestoreChunk(output, chunk);
+  }
+
+  if (!lastChunkEndsWithNewline) {
+    await writeRestoreChunk(output, "\n");
+  }
+
+  await writeRestoreChunk(output, "\\.\n");
+  return true;
+};
+
+export const createDatabaseScopedSqlRestoreFile = async (
   filePath: string,
   targetDatabase: string,
 ): Promise<string> => {
   const scopedFilePath = path.join(
-    app.getPath("temp"),
+    getTempPath(),
     `pgdesk-restore-${Date.now()}-${path.basename(filePath)}`,
   );
   const scanner = createSqlRestoreScopeScanner(targetDatabase);
@@ -739,22 +778,32 @@ const createDatabaseScopedSqlRestoreFile = async (
   const output = fs.createWriteStream(scopedFilePath, { encoding: "utf-8" });
 
   try {
-    output.write(getPlainRestorePreludeSql());
+    await writeRestoreChunk(output, getPlainRestorePreludeSql());
 
     for await (const line of lines) {
       scanSqlRestoreLine(line, scanner);
 
       if (!getDatabaseWrapperName(line)) {
-        output.write(`${rewritePgRestoreDataPathCopy(line, dataDirectory)}\n`);
+        const wroteInlineDataCopy = await writePgRestoreInlineDataCopy(
+          output,
+          line,
+          dataDirectory,
+        );
+
+        if (!wroteInlineDataCopy) {
+          await writeRestoreChunk(output, `${line}\n`);
+        }
       }
     }
-  } finally {
+
     output.end();
+    await finished(output);
+    return scopedFilePath;
+  } catch (error) {
+    output.end();
+    await fsp.rm(scopedFilePath, { force: true });
+    throw error;
   }
-
-  await finished(output);
-
-  return scopedFilePath;
 };
 
 const inferDatabaseNameFromBackupFile = (filePath: string): string => {
@@ -895,13 +944,16 @@ const isBrokenPipeError = (error: unknown): boolean => {
   );
 };
 
-const watchStream = (stream: Promise<unknown>): Promise<StreamResult> => {
+const watchStream = (
+  name: StreamResult["name"],
+  stream: Promise<unknown>,
+): Promise<StreamResult> => {
   return stream
     .then((): StreamResult => {
-      return { ok: true };
+      return { ok: true, name };
     })
     .catch((error: unknown): StreamResult => {
-      return { ok: false, error };
+      return { ok: false, name, error };
     });
 };
 
@@ -932,6 +984,7 @@ export const runCommand = async (
   if (options.stdinPath) {
     streams.push(
       watchStream(
+        "stdin",
         pipeline(fs.createReadStream(options.stdinPath), child.stdin),
       ),
     );
@@ -942,6 +995,7 @@ export const runCommand = async (
   if (options.stdoutPath) {
     streams.push(
       watchStream(
+        "stdout",
         pipeline(child.stdout, fs.createWriteStream(options.stdoutPath)),
       ),
     );
@@ -956,7 +1010,14 @@ export const runCommand = async (
 
   const streamResults = await Promise.all(streams);
   const streamError = streamResults.find((result) => {
-    return !result.ok && !isBrokenPipeError(result.error);
+    return (
+      !result.ok &&
+      !(
+        result.name === "stdin" &&
+        exitCode !== 0 &&
+        isBrokenPipeError(result.error)
+      )
+    );
   });
 
   if (streamError && !streamError.ok) {
