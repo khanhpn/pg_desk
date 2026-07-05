@@ -277,6 +277,8 @@ const createWindow = (): void => {
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 

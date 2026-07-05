@@ -65,6 +65,9 @@ describe("getPlainRestorePreludeSql", () => {
       "drop schema if exists %I cascade",
     );
     expect(getPlainRestorePreludeSql()).toContain("nspname not like 'pg_%'");
+    expect(getPlainRestorePreludeSql()).toContain(
+      "extension.extnamespace = namespace.oid",
+    );
     expect(getPlainRestorePreludeSql()).toContain("create schema public;");
   });
 });
@@ -220,6 +223,7 @@ describe("createDatabaseScopedSqlRestoreFile", () => {
         "restore",
       );
       const scopedSql = await fsp.readFile(scopedPath, "utf-8");
+      const scopedStat = await fsp.stat(scopedPath);
 
       await fsp.rm(scopedPath, { force: true });
 
@@ -228,6 +232,7 @@ describe("createDatabaseScopedSqlRestoreFile", () => {
       );
       expect(scopedSql).toContain("1\tPENELOPE\n2\tNICK\n\\.\n");
       expect(scopedSql).not.toContain("$$PATH$$");
+      expect(scopedStat.mode & 0o777).toBe(0o600);
     } finally {
       await fsp.rm(tempFolderPath, { recursive: true, force: true });
     }

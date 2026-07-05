@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { app, BrowserWindow, dialog } from "electron";
 import type { OpenDialogOptions, SaveDialogOptions } from "electron";
+import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
@@ -399,10 +400,15 @@ export const getPlainRestorePreludeSql = (): string => {
     "  schema_name text;",
     "begin",
     "  for schema_name in",
-    "    select nspname",
-    "    from pg_catalog.pg_namespace",
-    "    where nspname <> 'information_schema'",
-    "      and nspname not like 'pg_%'",
+    "    select namespace.nspname",
+    "    from pg_catalog.pg_namespace namespace",
+    "    where namespace.nspname <> 'information_schema'",
+    "      and namespace.nspname not like 'pg_%'",
+    "      and not exists (",
+    "        select 1",
+    "        from pg_catalog.pg_extension extension",
+    "        where extension.extnamespace = namespace.oid",
+    "      )",
     "  loop",
     "    execute format('drop schema if exists %I cascade', schema_name);",
     "  end loop;",
@@ -767,7 +773,7 @@ export const createDatabaseScopedSqlRestoreFile = async (
 ): Promise<string> => {
   const scopedFilePath = path.join(
     getTempPath(),
-    `pgdesk-restore-${Date.now()}-${path.basename(filePath)}`,
+    `pgdesk-restore-${randomUUID()}-${path.basename(filePath)}`,
   );
   const scanner = createSqlRestoreScopeScanner(targetDatabase);
   const dataDirectory = path.dirname(filePath);
@@ -775,7 +781,10 @@ export const createDatabaseScopedSqlRestoreFile = async (
     input: fs.createReadStream(filePath),
     crlfDelay: Infinity,
   });
-  const output = fs.createWriteStream(scopedFilePath, { encoding: "utf-8" });
+  const output = fs.createWriteStream(scopedFilePath, {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
 
   try {
     await writeRestoreChunk(output, getPlainRestorePreludeSql());

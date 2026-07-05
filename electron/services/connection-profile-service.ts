@@ -137,11 +137,13 @@ const readLegacyProfileList =
 const writeRawProfileList = async (
   list: StoredConnectionProfileList,
 ): Promise<void> => {
-  await fs.writeFile(
-    getProfileListPath(),
-    JSON.stringify(list, null, 2),
-    "utf-8",
-  );
+  const profileListPath = getProfileListPath();
+
+  await fs.writeFile(profileListPath, JSON.stringify(list, null, 2), {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
+  await fs.chmod(profileListPath, 0o600);
 };
 
 export const loadConnectionProfiles = async (): Promise<{
