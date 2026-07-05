@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import fsp from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   assertDatabaseScopedSqlRestore,
@@ -12,9 +15,12 @@ import {
   buildProfileForDatabase,
   createDatabaseIfMissing,
   getCreateDatabaseSql,
+  getPlainRestorePreludeSql,
   getPgDumpSqlBackupArgs,
   getPsqlPlainRestoreArgs,
+  runCommand,
   selectDockerContainerFromPsOutput,
+  toDatabaseScopedSqlRestore,
 } from "@electron/services/postgres-backup-service";
 import type { PgConnectionProfile } from "@electron/types/connection";
 
@@ -30,9 +36,11 @@ const createProfile = (port: number): PgConnectionProfile => ({
 });
 
 describe("getPgDumpSqlBackupArgs", () => {
-  it("uses plain SQL output so backups are saved as readable .sql files", () => {
+  it("includes cleanup statements so backups can be restored over existing objects", () => {
     expect(getPgDumpSqlBackupArgs()).toEqual([
       "--format=plain",
+      "--clean",
+      "--if-exists",
       "--no-owner",
       "--no-privileges",
     ]);
@@ -50,7 +58,70 @@ describe("getPsqlPlainRestoreArgs", () => {
   });
 });
 
+describe("getPlainRestorePreludeSql", () => {
+  it("cleans the target database before restoring a plain SQL backup", () => {
+    expect(getPlainRestorePreludeSql()).toContain(
+      "drop schema if exists %I cascade",
+    );
+    expect(getPlainRestorePreludeSql()).toContain("nspname not like 'pg_%'");
+    expect(getPlainRestorePreludeSql()).toContain("create schema public;");
+  });
+});
+
+describe("runCommand", () => {
+  it("keeps the process stderr when stdin closes early", async () => {
+    const tempFilePath = path.join(os.tmpdir(), "pgdesk-stdin-epipe.sql");
+
+    await fsp.writeFile(tempFilePath, "select 1;\n".repeat(100_000), "utf-8");
+
+    try {
+      await expect(
+        runCommand(
+          process.execPath,
+          ["-e", "process.stderr.write('psql real error'); process.exit(1);"],
+          {
+            stdinPath: tempFilePath,
+          },
+        ),
+      ).resolves.toEqual({
+        code: 1,
+        stderr: "psql real error",
+      });
+    } finally {
+      await fsp.rm(tempFilePath, { force: true });
+    }
+  });
+});
+
 describe("assertDatabaseScopedSqlRestore", () => {
+  it("allows single-database dump wrappers when restoring into a chosen target database", () => {
+    expect(() =>
+      assertDatabaseScopedSqlRestore(
+        `
+          DROP DATABASE dvdrental;
+          CREATE DATABASE dvdrental WITH TEMPLATE = template0 ENCODING = 'UTF8';
+          ALTER DATABASE dvdrental OWNER TO postgres;
+          \\connect dvdrental
+          create table users (id integer);
+        `,
+        "restore",
+      ),
+    ).not.toThrow();
+  });
+
+  it("allows pg_dump create wrappers when they target the selected database", () => {
+    expect(() =>
+      assertDatabaseScopedSqlRestore(
+        `
+          CREATE DATABASE restore;
+          \\connect restore
+          create table users (id integer);
+        `,
+        "restore",
+      ),
+    ).not.toThrow();
+  });
+
   it("rejects role-level SQL that could disable the login used by applications", () => {
     expect(() =>
       assertDatabaseScopedSqlRestore(`
@@ -62,11 +133,69 @@ describe("assertDatabaseScopedSqlRestore", () => {
 
   it("rejects psql connect commands that can leave the selected target database", () => {
     expect(() =>
-      assertDatabaseScopedSqlRestore(`
-        \\connect postgres
-        create table users (id integer);
-      `),
+      assertDatabaseScopedSqlRestore(
+        `
+          \\connect postgres
+          create table users (id integer);
+        `,
+        "restore",
+      ),
     ).toThrow(/server-level statements/i);
+  });
+});
+
+describe("toDatabaseScopedSqlRestore", () => {
+  it("rewrites pg_restore data file placeholders to client-side copy commands", () => {
+    expect(
+      toDatabaseScopedSqlRestore(
+        "COPY public.actor (actor_id, first_name) FROM '$$PATH$$/3057.dat';",
+        "restore",
+        "/Users/khanh/Downloads/dvdrental",
+      ),
+    ).toBe(
+      "\\copy public.actor (actor_id, first_name) FROM '/Users/khanh/Downloads/dvdrental/3057.dat'",
+    );
+  });
+
+  it("removes single-database dump wrappers before restoring into a chosen target database", () => {
+    const scopedSql = toDatabaseScopedSqlRestore(
+      `
+        DROP DATABASE dvdrental;
+        CREATE DATABASE dvdrental WITH TEMPLATE = template0 ENCODING = 'UTF8';
+        ALTER DATABASE dvdrental OWNER TO postgres;
+        \\connect dvdrental
+        create table users (id integer);
+      `,
+      "restore",
+    );
+
+    expect(scopedSql).toContain("create table users");
+    expect(scopedSql).not.toMatch(
+      /DROP DATABASE|CREATE DATABASE|ALTER DATABASE|\\connect/i,
+    );
+  });
+
+  it("removes pg_dump create wrappers before restoring into the selected database", () => {
+    expect(
+      toDatabaseScopedSqlRestore(
+        `
+          CREATE DATABASE restore;
+          \\connect restore
+          create table users (id integer);
+        `,
+        "restore",
+      ),
+    ).toContain("create table users");
+    expect(
+      toDatabaseScopedSqlRestore(
+        `
+          CREATE DATABASE restore;
+          \\connect restore
+          create table users (id integer);
+        `,
+        "restore",
+      ),
+    ).not.toMatch(/CREATE DATABASE|\\connect/i);
   });
 });
 

@@ -5,7 +5,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
-import { pipeline } from "node:stream/promises";
+import { finished, pipeline } from "node:stream/promises";
 import type { PgConnectionProfile } from "@electron/types/connection";
 import type {
   PgBackupFolderSelectionResult,
@@ -44,6 +44,15 @@ type CommandResult = {
   code: number | null;
   stderr: string;
 };
+
+type StreamResult =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      error: unknown;
+    };
 
 type QueryableDatabaseClient = {
   query: (
@@ -101,6 +110,8 @@ type SqlRestoreScopeScanner = {
   inDoubleQuote: boolean;
   dollarQuoteTag: string | null;
   tail: string;
+  wrapperDatabase: string | null;
+  targetDatabase?: string;
 };
 
 type ServerLevelSqlPattern = {
@@ -360,11 +371,39 @@ export const createDatabaseIfMissing = async (
 };
 
 export const getPgDumpSqlBackupArgs = (): string[] => {
-  return ["--format=plain", "--no-owner", "--no-privileges"];
+  return [
+    "--format=plain",
+    "--clean",
+    "--if-exists",
+    "--no-owner",
+    "--no-privileges",
+  ];
 };
 
 export const getPsqlPlainRestoreArgs = (): string[] => {
   return ["--no-psqlrc", "--set", "ON_ERROR_STOP=on", "--single-transaction"];
+};
+
+export const getPlainRestorePreludeSql = (): string => {
+  return [
+    "do $$",
+    "declare",
+    "  schema_name text;",
+    "begin",
+    "  for schema_name in",
+    "    select nspname",
+    "    from pg_catalog.pg_namespace",
+    "    where nspname <> 'information_schema'",
+    "      and nspname not like 'pg_%'",
+    "  loop",
+    "    execute format('drop schema if exists %I cascade', schema_name);",
+    "  end loop;",
+    "end",
+    "$$;",
+    "create schema public;",
+    "grant all on schema public to public;",
+    "",
+  ].join("\n");
 };
 
 const SERVER_LEVEL_SQL_PATTERNS: ServerLevelSqlPattern[] = [
@@ -382,14 +421,25 @@ const SERVER_LEVEL_SQL_PATTERNS: ServerLevelSqlPattern[] = [
   },
 ];
 
-const createSqlRestoreScopeScanner = (): SqlRestoreScopeScanner => ({
-  copyData: false,
-  inBlockComment: false,
-  inSingleQuote: false,
-  inDoubleQuote: false,
-  dollarQuoteTag: null,
-  tail: "",
-});
+const createSqlRestoreScopeScanner = (
+  targetDatabase?: string,
+): SqlRestoreScopeScanner => {
+  const scanner: SqlRestoreScopeScanner = {
+    copyData: false,
+    inBlockComment: false,
+    inSingleQuote: false,
+    inDoubleQuote: false,
+    dollarQuoteTag: null,
+    tail: "",
+    wrapperDatabase: null,
+  };
+
+  if (targetDatabase) {
+    scanner.targetDatabase = targetDatabase;
+  }
+
+  return scanner;
+};
 
 const findDollarQuoteTag = (value: string, index: number): string | null => {
   const match = /^\$[A-Za-z_][A-Za-z_0-9]*\$|^\$\$/.exec(value.slice(index));
@@ -491,6 +541,119 @@ const getServerLevelSqlViolation = (
   })?.label;
 };
 
+const getUnquotedIdentifier = (value: string): string | null => {
+  const trimmedValue = value.trim();
+  const quotedMatch = /^"((?:""|[^"])*)"$/.exec(trimmedValue);
+
+  if (quotedMatch) {
+    return quotedMatch[1].replace(/""/g, '"');
+  }
+
+  const unquotedMatch = /^([A-Za-z_][A-Za-z_0-9]*)$/.exec(trimmedValue);
+
+  return unquotedMatch?.[1] ?? null;
+};
+
+const getCreateDatabaseName = (line: string): string | null => {
+  const match =
+    /^\s*create\s+database\s+("[^"]*(?:""[^"]*)*"|[A-Za-z_][A-Za-z_0-9]*)(?:\s+[\s\S]*)?;\s*$/i.exec(
+      line,
+    );
+
+  return match ? getUnquotedIdentifier(match[1]) : null;
+};
+
+const getDropDatabaseName = (line: string): string | null => {
+  const match =
+    /^\s*drop\s+database\s+(?:if\s+exists\s+)?("[^"]*(?:""[^"]*)*"|[A-Za-z_][A-Za-z_0-9]*)\s*;\s*$/i.exec(
+      line,
+    );
+
+  return match ? getUnquotedIdentifier(match[1]) : null;
+};
+
+const getAlterDatabaseName = (line: string): string | null => {
+  const match =
+    /^\s*alter\s+database\s+("[^"]*(?:""[^"]*)*"|[A-Za-z_][A-Za-z_0-9]*)(?:\s+[\s\S]*)?;\s*$/i.exec(
+      line,
+    );
+
+  return match ? getUnquotedIdentifier(match[1]) : null;
+};
+
+const getConnectDatabaseName = (line: string): string | null => {
+  const match =
+    /^\s*\\(?:connect|c)\s+("[^"]*(?:""[^"]*)*"|[^\s]+)(?:\s|$)/i.exec(line);
+
+  return match ? getUnquotedIdentifier(match[1]) : null;
+};
+
+const getDatabaseWrapperName = (line: string): string | null => {
+  return (
+    getCreateDatabaseName(line) ??
+    getDropDatabaseName(line) ??
+    getAlterDatabaseName(line) ??
+    getConnectDatabaseName(line)
+  );
+};
+
+const escapePsqlSingleQuotedValue = (value: string): string => {
+  return value.replace(/'/g, "''");
+};
+
+const rewritePgRestoreDataPathCopy = (
+  line: string,
+  dataDirectory?: string,
+): string => {
+  if (!dataDirectory) {
+    return line;
+  }
+
+  const match =
+    /^(\s*)COPY\s+([\s\S]+?)\s+FROM\s+'\$\$PATH\$\$\/([^']+)';\s*$/i.exec(line);
+
+  if (!match) {
+    return line;
+  }
+
+  const [, indent, copyTarget, relativeFilePath] = match;
+  const dataFilePath = path.join(dataDirectory, relativeFilePath);
+
+  return `${indent}\\copy ${copyTarget} FROM '${escapePsqlSingleQuotedValue(
+    dataFilePath,
+  )}'`;
+};
+
+const isConnectDatabaseWrapper = (line: string): boolean => {
+  return getConnectDatabaseName(line) !== null;
+};
+
+const isAllowedDatabaseWrapper = (
+  line: string,
+  scanner: SqlRestoreScopeScanner,
+): boolean => {
+  const databaseName = getDatabaseWrapperName(line);
+
+  if (!databaseName) {
+    return false;
+  }
+
+  if (
+    isConnectDatabaseWrapper(line) &&
+    !scanner.wrapperDatabase &&
+    databaseName !== scanner.targetDatabase
+  ) {
+    return false;
+  }
+
+  if (scanner.wrapperDatabase && scanner.wrapperDatabase !== databaseName) {
+    return false;
+  }
+
+  scanner.wrapperDatabase = databaseName;
+  return true;
+};
+
 const scanSqlRestoreLine = (
   line: string,
   scanner: SqlRestoreScopeScanner,
@@ -499,6 +662,10 @@ const scanSqlRestoreLine = (
     if (line === "\\.") {
       scanner.copyData = false;
     }
+    return;
+  }
+
+  if (isAllowedDatabaseWrapper(line, scanner)) {
     return;
   }
 
@@ -525,26 +692,69 @@ const scanSqlRestoreLine = (
   }
 };
 
-export const assertDatabaseScopedSqlRestore = (sql: string): void => {
-  const scanner = createSqlRestoreScopeScanner();
+export const assertDatabaseScopedSqlRestore = (
+  sql: string,
+  targetDatabase?: string,
+): void => {
+  const scanner = createSqlRestoreScopeScanner(targetDatabase);
 
   for (const line of sql.split(/\r?\n/)) {
     scanSqlRestoreLine(line, scanner);
   }
 };
 
-const assertDatabaseScopedSqlRestoreFile = async (
+export const toDatabaseScopedSqlRestore = (
+  sql: string,
+  targetDatabase: string,
+  dataDirectory?: string,
+): string => {
+  const scanner = createSqlRestoreScopeScanner(targetDatabase);
+  const outputLines: string[] = [];
+
+  for (const line of sql.split(/\r?\n/)) {
+    scanSqlRestoreLine(line, scanner);
+
+    if (!getDatabaseWrapperName(line)) {
+      outputLines.push(rewritePgRestoreDataPathCopy(line, dataDirectory));
+    }
+  }
+
+  return outputLines.join("\n");
+};
+
+const createDatabaseScopedSqlRestoreFile = async (
   filePath: string,
-): Promise<void> => {
-  const scanner = createSqlRestoreScopeScanner();
+  targetDatabase: string,
+): Promise<string> => {
+  const scopedFilePath = path.join(
+    app.getPath("temp"),
+    `pgdesk-restore-${Date.now()}-${path.basename(filePath)}`,
+  );
+  const scanner = createSqlRestoreScopeScanner(targetDatabase);
+  const dataDirectory = path.dirname(filePath);
   const lines = readline.createInterface({
     input: fs.createReadStream(filePath),
     crlfDelay: Infinity,
   });
+  const output = fs.createWriteStream(scopedFilePath, { encoding: "utf-8" });
 
-  for await (const line of lines) {
-    scanSqlRestoreLine(line, scanner);
+  try {
+    output.write(getPlainRestorePreludeSql());
+
+    for await (const line of lines) {
+      scanSqlRestoreLine(line, scanner);
+
+      if (!getDatabaseWrapperName(line)) {
+        output.write(`${rewritePgRestoreDataPathCopy(line, dataDirectory)}\n`);
+      }
+    }
+  } finally {
+    output.end();
   }
+
+  await finished(output);
+
+  return scopedFilePath;
 };
 
 const inferDatabaseNameFromBackupFile = (filePath: string): string => {
@@ -676,7 +886,26 @@ const findLocalTool = async (
   return null;
 };
 
-const runCommand = async (
+const isBrokenPipeError = (error: unknown): boolean => {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "EPIPE"
+  );
+};
+
+const watchStream = (stream: Promise<unknown>): Promise<StreamResult> => {
+  return stream
+    .then((): StreamResult => {
+      return { ok: true };
+    })
+    .catch((error: unknown): StreamResult => {
+      return { ok: false, error };
+    });
+};
+
+export const runCommand = async (
   command: string,
   args: string[],
   options: {
@@ -698,17 +927,23 @@ const runCommand = async (
     stderr += chunk.toString();
   });
 
-  const streams: Array<Promise<unknown>> = [];
+  const streams: Array<Promise<StreamResult>> = [];
 
   if (options.stdinPath) {
-    streams.push(pipeline(fs.createReadStream(options.stdinPath), child.stdin));
+    streams.push(
+      watchStream(
+        pipeline(fs.createReadStream(options.stdinPath), child.stdin),
+      ),
+    );
   } else {
     child.stdin.end();
   }
 
   if (options.stdoutPath) {
     streams.push(
-      pipeline(child.stdout, fs.createWriteStream(options.stdoutPath)),
+      watchStream(
+        pipeline(child.stdout, fs.createWriteStream(options.stdoutPath)),
+      ),
     );
   } else {
     child.stdout.resume();
@@ -719,7 +954,14 @@ const runCommand = async (
     child.on("close", resolve);
   });
 
-  await Promise.all(streams);
+  const streamResults = await Promise.all(streams);
+  const streamError = streamResults.find((result) => {
+    return !result.ok && !isBrokenPipeError(result.error);
+  });
+
+  if (streamError && !streamError.ok) {
+    throw streamError.error;
+  }
 
   return {
     code: exitCode,
@@ -1059,6 +1301,7 @@ export const restorePostgresDatabase = async (
   connectionId?: string | null,
 ): Promise<PgDatabaseRestoreResult> => {
   let auditProfile: PgConnectionProfile | null = null;
+  let scopedInputPath: string | null = null;
 
   try {
     const profile = await getConnectionProfile(connectionId);
@@ -1092,9 +1335,11 @@ export const restorePostgresDatabase = async (
       isSqlFile ? "psql" : "pg_restore",
       profile,
     );
-
     if (isSqlFile) {
-      await assertDatabaseScopedSqlRestoreFile(inputPath);
+      scopedInputPath = await createDatabaseScopedSqlRestoreFile(
+        inputPath,
+        profile.database,
+      );
     }
 
     await recordDatabaseMaintenanceAuditEvent({
@@ -1116,7 +1361,7 @@ export const restorePostgresDatabase = async (
         ? getPsqlPlainRestoreArgs()
         : ["--clean", "--if-exists", "--no-owner", "--no-privileges"],
       {
-        stdinPath: inputPath,
+        stdinPath: scopedInputPath ?? inputPath,
       },
     );
 
@@ -1152,6 +1397,10 @@ export const restorePostgresDatabase = async (
       ok: false,
       message: getErrorMessage(error),
     };
+  } finally {
+    if (scopedInputPath) {
+      await fsp.rm(scopedInputPath, { force: true });
+    }
   }
 };
 
@@ -1471,17 +1720,21 @@ export const restorePostgresDatabases = async (
         profile,
         entry.targetDatabase,
       );
+      let scopedFilePath: string | null = null;
 
       try {
         await createDatabaseIfMissing(pool, entry.targetDatabase);
-        await assertDatabaseScopedSqlRestoreFile(entry.filePath);
+        scopedFilePath = await createDatabaseScopedSqlRestoreFile(
+          entry.filePath,
+          entry.targetDatabase,
+        );
         await runPostgresTool(
           runner,
           "psql",
           databaseProfile,
           getPsqlPlainRestoreArgs(),
           {
-            stdinPath: entry.filePath,
+            stdinPath: scopedFilePath,
           },
         );
         items.push({
@@ -1497,6 +1750,10 @@ export const restorePostgresDatabases = async (
           message: getErrorMessage(error),
           filePath: entry.filePath,
         });
+      } finally {
+        if (scopedFilePath) {
+          await fsp.rm(scopedFilePath, { force: true });
+        }
       }
     }
 
