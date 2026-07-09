@@ -46,4 +46,67 @@ describe("postgres metadata service", () => {
       expect.stringContaining("table_schema not like 'pg\\_%' escape '\\'"),
     );
   });
+
+  it("builds SQL for table schema edits", async () => {
+    const { buildTableChangeSql } =
+      await import("@electron/services/postgres-metadata-service");
+
+    expect(
+      buildTableChangeSql({
+        action: "change-data-type",
+        schema: "public",
+        table: "users",
+        columnName: "age",
+        dataType: "integer",
+      }),
+    ).toBe('alter table "public"."users" alter column "age" type integer;');
+
+    expect(
+      buildTableChangeSql({
+        action: "change-default",
+        schema: "public",
+        table: "users",
+        columnName: "created_at",
+        defaultExpression: "now()",
+      }),
+    ).toBe(
+      'alter table "public"."users" alter column "created_at" set default now();',
+    );
+
+    expect(
+      buildTableChangeSql({
+        action: "change-default",
+        schema: "public",
+        table: "users",
+        columnName: "nickname",
+        defaultExpression: null,
+      }),
+    ).toBe(
+      'alter table "public"."users" alter column "nickname" drop default;',
+    );
+
+    expect(
+      buildTableChangeSql({
+        action: "delete-column",
+        schema: "public",
+        table: "users",
+        columnName: "legacy_code",
+      }),
+    ).toBe('alter table "public"."users" drop column "legacy_code";');
+  });
+
+  it("rejects unsafe default expressions", async () => {
+    const { buildTableChangeSql } =
+      await import("@electron/services/postgres-metadata-service");
+
+    expect(() => {
+      buildTableChangeSql({
+        action: "change-default",
+        schema: "public",
+        table: "users",
+        columnName: "role",
+        defaultExpression: "'user'; drop table users",
+      });
+    }).toThrow("Default expression must be a single SQL expression");
+  });
 });

@@ -78,9 +78,27 @@ const buildPreviewSql = (payload: PgTableChangePayload | null): string => {
     )} to ${quoteIdentifier(payload.newColumnName)};`;
   }
 
-  return `alter table ${tableName} alter column ${quoteIdentifier(
+  if (payload.action === "change-data-type") {
+    return `alter table ${tableName} alter column ${quoteIdentifier(
+      payload.columnName,
+    )} type ${payload.dataType};`;
+  }
+
+  if (payload.action === "change-default") {
+    if (payload.defaultExpression === null) {
+      return `alter table ${tableName} alter column ${quoteIdentifier(
+        payload.columnName,
+      )} drop default;`;
+    }
+
+    return `alter table ${tableName} alter column ${quoteIdentifier(
+      payload.columnName,
+    )} set default ${payload.defaultExpression};`;
+  }
+
+  return `alter table ${tableName} drop column ${quoteIdentifier(
     payload.columnName,
-  )} type ${payload.dataType};`;
+  )};`;
 };
 
 export const TableInspectorDrawer = ({
@@ -98,6 +116,8 @@ export const TableInspectorDrawer = ({
   const [selectedColumnName, setSelectedColumnName] = useState("");
   const [newColumnName, setNewColumnName] = useState("");
   const [dataType, setDataType] = useState("text");
+  const [defaultExpression, setDefaultExpression] = useState("");
+  const [shouldDropDefault, setShouldDropDefault] = useState(false);
   const [isNullable, setIsNullable] = useState(true);
   const [isApplyingChange, setIsApplyingChange] = useState(false);
   const [editMessage, setEditMessage] = useState("");
@@ -149,20 +169,45 @@ export const TableInspectorDrawer = ({
       };
     }
 
+    if (editAction === "change-data-type") {
+      return {
+        action: "change-data-type",
+        schema: relation.schema,
+        table: relation.name,
+        columnName: selectedColumnName,
+        dataType,
+      };
+    }
+
+    if (editAction === "change-default") {
+      if (!shouldDropDefault && !defaultExpression.trim()) {
+        return null;
+      }
+
+      return {
+        action: "change-default",
+        schema: relation.schema,
+        table: relation.name,
+        columnName: selectedColumnName,
+        defaultExpression: shouldDropDefault ? null : defaultExpression.trim(),
+      };
+    }
+
     return {
-      action: "change-data-type",
+      action: "delete-column",
       schema: relation.schema,
       table: relation.name,
       columnName: selectedColumnName,
-      dataType,
     };
   }, [
     dataType,
+    defaultExpression,
     editAction,
     isNullable,
     newColumnName,
     relation,
     selectedColumnName,
+    shouldDropDefault,
   ]);
   const previewSql = useMemo(() => {
     return buildPreviewSql(editPayload);
@@ -198,6 +243,8 @@ export const TableInspectorDrawer = ({
       if (result.ok) {
         setEditMessage(result.message);
         setNewColumnName("");
+        setDefaultExpression("");
+        setShouldDropDefault(false);
         await refreshTableInspector();
         return;
       }
@@ -402,6 +449,8 @@ export const TableInspectorDrawer = ({
                     <option value="add-column">Add column</option>
                     <option value="rename-column">Rename column</option>
                     <option value="change-data-type">Change datatype</option>
+                    <option value="change-default">Set / drop default</option>
+                    <option value="delete-column">Delete column</option>
                   </select>
                 </label>
 
@@ -425,7 +474,8 @@ export const TableInspectorDrawer = ({
                   </label>
                 )}
 
-                {editAction !== "change-data-type" && (
+                {(editAction === "add-column" ||
+                  editAction === "rename-column") && (
                   <label className="inspector-field">
                     <span>
                       {editAction === "add-column" ? "Column name" : "New name"}
@@ -441,7 +491,8 @@ export const TableInspectorDrawer = ({
                   </label>
                 )}
 
-                {editAction !== "rename-column" && (
+                {(editAction === "add-column" ||
+                  editAction === "change-data-type") && (
                   <label className="inspector-field">
                     <span>Data type</span>
                     <select
@@ -458,6 +509,36 @@ export const TableInspectorDrawer = ({
                       ))}
                     </select>
                   </label>
+                )}
+
+                {editAction === "change-default" && (
+                  <>
+                    <label className="inspector-checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={shouldDropDefault}
+                        onChange={(event) => {
+                          setShouldDropDefault(event.currentTarget.checked);
+                          setEditMessage("");
+                        }}
+                      />
+                      <span>Drop current default</span>
+                    </label>
+
+                    {!shouldDropDefault && (
+                      <label className="inspector-field">
+                        <span>Default expression</span>
+                        <input
+                          value={defaultExpression}
+                          onChange={(event) => {
+                            setDefaultExpression(event.currentTarget.value);
+                            setEditMessage("");
+                          }}
+                          placeholder="'active', 0, now()"
+                        />
+                      </label>
+                    )}
+                  </>
                 )}
 
                 {editAction === "add-column" && (

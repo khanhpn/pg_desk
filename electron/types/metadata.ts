@@ -84,6 +84,19 @@ export type PgTableChangePayload =
       table: string;
       columnName: string;
       dataType: string;
+    }
+  | {
+      action: "change-default";
+      schema: string;
+      table: string;
+      columnName: string;
+      defaultExpression: string | null;
+    }
+  | {
+      action: "delete-column";
+      schema: string;
+      table: string;
+      columnName: string;
     };
 
 export type PgTableChangeResult = {

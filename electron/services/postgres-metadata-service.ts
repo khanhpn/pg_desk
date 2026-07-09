@@ -93,7 +93,21 @@ const getSupportedDataType = (dataType: string): string => {
   return dataType;
 };
 
-const buildTableChangeSql = (payload: PgTableChangePayload): string => {
+const getDefaultExpression = (defaultExpression: string): string => {
+  const trimmedExpression = defaultExpression.trim();
+
+  if (!trimmedExpression) {
+    throw new Error("Default expression is required");
+  }
+
+  if (trimmedExpression.includes(";") || trimmedExpression.includes("\0")) {
+    throw new Error("Default expression must be a single SQL expression");
+  }
+
+  return trimmedExpression;
+};
+
+export const buildTableChangeSql = (payload: PgTableChangePayload): string => {
   const qualifiedTableName = getQualifiedTableName(
     payload.schema,
     payload.table,
@@ -113,9 +127,27 @@ const buildTableChangeSql = (payload: PgTableChangePayload): string => {
     )} to ${quoteIdentifier(payload.newColumnName)};`;
   }
 
-  return `alter table ${qualifiedTableName} alter column ${quoteIdentifier(
+  if (payload.action === "change-data-type") {
+    return `alter table ${qualifiedTableName} alter column ${quoteIdentifier(
+      payload.columnName,
+    )} type ${getSupportedDataType(payload.dataType)};`;
+  }
+
+  if (payload.action === "change-default") {
+    if (payload.defaultExpression === null) {
+      return `alter table ${qualifiedTableName} alter column ${quoteIdentifier(
+        payload.columnName,
+      )} drop default;`;
+    }
+
+    return `alter table ${qualifiedTableName} alter column ${quoteIdentifier(
+      payload.columnName,
+    )} set default ${getDefaultExpression(payload.defaultExpression)};`;
+  }
+
+  return `alter table ${qualifiedTableName} drop column ${quoteIdentifier(
     payload.columnName,
-  )} type ${getSupportedDataType(payload.dataType)};`;
+  )};`;
 };
 
 export const getPostgresExplorer = async (
