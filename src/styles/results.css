@@ -9,13 +9,21 @@
 }
 
 .result-tabs {
-  height: 34px;
+  height: 38px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 12px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--border-soft);
-  background: color-mix(in srgb, var(--surface-1) 88%, var(--surface-0));
+  background: color-mix(in srgb, var(--surface-1) 92%, var(--surface-0));
+}
+
+.result-tab-group {
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .result-actions {
@@ -28,7 +36,7 @@
 
 .result-tab {
   height: 100%;
-  padding: 0 2px;
+  padding: 0 1px;
   border-bottom: 2px solid transparent;
   font-size: 12px;
   font-weight: 700;
@@ -40,6 +48,20 @@
 .result-tab.active {
   color: var(--text);
   border-bottom-color: var(--accent);
+}
+
+.result-selection-badge {
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 13%, var(--surface-0));
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .save-message {
@@ -55,24 +77,48 @@
   color: var(--danger);
 }
 
-.save-results-button {
-  height: 24px;
+.save-results-button,
+.delete-row-button {
+  height: 26px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--surface-0);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-0) 88%, var(--surface-1));
   color: var(--text);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease,
+    opacity 0.14s ease;
 }
 
-.save-results-button:hover:not(:disabled) {
+.delete-row-button {
+  width: 30px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+  color: color-mix(in srgb, var(--danger) 88%, var(--text));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-results-button:hover:not(:disabled),
+.delete-row-button:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--surface-2);
 }
 
-.save-results-button:disabled {
+.delete-row-button:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface-0));
+  color: var(--danger);
+}
+
+.save-results-button:disabled,
+.delete-row-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -95,7 +141,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 32px;
+  height: 34px;
   background: color-mix(in srgb, var(--surface-1) 92%, var(--surface-0));
   color: var(--text-muted);
   font-weight: 700;
@@ -131,16 +177,78 @@
   background: rgba(79, 179, 165, 0.08);
 }
 
+.result-grid tbody tr.selected-row {
+  background: rgba(79, 179, 165, 0.13);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .result-grid th:first-child,
-.result-grid td:first-child {
+.result-grid td:first-child,
+.result-grid th:nth-child(2),
+.result-grid td:nth-child(2) {
   color: var(--text-faint);
   text-align: left;
   background: color-mix(in srgb, var(--editor-gutter-bg) 86%, var(--surface-0));
+}
+
+.result-grid th:first-child,
+.result-grid td:first-child {
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
+
+.result-grid th:nth-child(2),
+.result-grid td:nth-child(2) {
   padding-left: 12px;
 }
 
-.result-grid th:not(:first-child) {
+.result-grid th:not(:first-child):not(:nth-child(2)) {
   padding-right: 16px;
+}
+
+.row-selector-header {
+  padding: 0;
+}
+
+.row-selector-cell {
+  padding: 0;
+}
+
+.row-selector-button {
+  width: 100%;
+  height: 33px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.row-selector-dot {
+  width: 9px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--text-faint) 72%, var(--border));
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 0 0 3px transparent;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.row-selector-button:hover .row-selector-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.row-selector-button[aria-pressed="true"] .row-selector-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .result-column-label {

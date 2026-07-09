@@ -140,6 +140,21 @@ type QueryCellUpdateResult = {
   rowCount: number;
 };
 
+type QueryRowDeletePayload = {
+  connectionId?: string | null;
+  tableOid: number;
+  primaryKeys: Array<{
+    columnName: string;
+    value: unknown;
+  }>;
+};
+
+type QueryRowDeleteResult = {
+  ok: boolean;
+  message: string;
+  rowCount: number;
+};
+
 type QueryCancelResult = {
   ok: boolean;
   message: string;
@@ -297,6 +312,9 @@ type PgDeskApi = {
     updateCell: (
       payload: QueryCellUpdatePayload,
     ) => Promise<QueryCellUpdateResult>;
+    deleteRow: (
+      payload: QueryRowDeletePayload,
+    ) => Promise<QueryRowDeleteResult>;
   };
 
   database: {

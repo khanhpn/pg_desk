@@ -140,6 +140,21 @@ type QueryCellUpdateResult = {
   rowCount: number;
 };
 
+type QueryRowDeletePayload = {
+  connectionId?: string | null;
+  tableOid: number;
+  primaryKeys: Array<{
+    columnName: string;
+    value: unknown;
+  }>;
+};
+
+type QueryRowDeleteResult = {
+  ok: boolean;
+  message: string;
+  rowCount: number;
+};
+
 type QueryCancelResult = {
   ok: boolean;
   message: string;
@@ -329,6 +344,12 @@ const pgdeskApi = {
       payload: QueryCellUpdatePayload,
     ): Promise<QueryCellUpdateResult> => {
       return ipcRenderer.invoke("query:update-cell", payload);
+    },
+
+    deleteRow: (
+      payload: QueryRowDeletePayload,
+    ): Promise<QueryRowDeleteResult> => {
+      return ipcRenderer.invoke("query:delete-row", payload);
     },
   },
 

@@ -1,13 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { useResultColumnSizing } from "@/hooks/useResultColumnSizing";
 import { useResultEditing } from "@/hooks/useResultEditing";
+import { useResultRowSelection } from "@/hooks/useResultRowSelection";
 import type { QueryRunResult } from "@electron/types/query";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties } from "react";
 
 const BOOLEAN_DATA_TYPE_ID = 16;
+const ROW_SELECTOR_COLUMN_WIDTH = 36;
 const ROW_NUMBER_COLUMN_WIDTH = 42;
-const COLUMN_MIN_WIDTH = 72;
-const COLUMN_MAX_WIDTH = 720;
-const COLUMN_DEFAULT_WIDTH = 150;
+const RESULT_GRID_FIXED_WIDTH =
+  ROW_SELECTOR_COLUMN_WIDTH + ROW_NUMBER_COLUMN_WIDTH;
 
 type ResultPanelProps = {
   connectionId: string | null;
@@ -40,25 +42,18 @@ const formatEditableValue = (value: unknown): string => {
   return formatCellValue(value);
 };
 
-const clampColumnWidth = (width: number): number => {
-  return Math.min(Math.max(width, COLUMN_MIN_WIDTH), COLUMN_MAX_WIDTH);
-};
-
-const getDefaultColumnWidth = (column: string): number => {
-  return clampColumnWidth(
-    Math.max(COLUMN_DEFAULT_WIDTH, column.length * 9 + 32),
-  );
-};
-
 export const ResultPanel = ({
   connectionId,
   queryResult,
   queryMessage,
   panelHeight,
 }: ResultPanelProps): JSX.Element => {
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const hasRows = Boolean(queryResult?.rows.length);
   const hasColumns = Boolean(queryResult?.columns.length);
+  const columns = useMemo(
+    () => queryResult?.columns ?? [],
+    [queryResult?.columns],
+  );
   const {
     draftRows,
     columnMetadataByName,
@@ -67,9 +62,26 @@ export const ResultPanel = ({
     isSaving,
     saveMessage,
     isCellDirty,
+    getRowDeleteTarget,
     updateDraftCell,
+    deleteRow,
     saveChanges,
   } = useResultEditing(queryResult, connectionId);
+  const { getColumnWidth, handleColumnResizeStart, resultGridStyle } =
+    useResultColumnSizing(columns, RESULT_GRID_FIXED_WIDTH);
+  const {
+    handleDeleteClick,
+    selectRow,
+    selectedDeleteTarget,
+    selectedRowIndex,
+    selectedRowLabel,
+  } = useResultRowSelection({
+    deleteRow,
+    formatCellValue,
+    getRowDeleteTarget,
+    isDeletingDisabled: isSaving,
+    queryResult,
+  });
   const resultPanelStyle = useMemo(
     () =>
       ({
@@ -92,62 +104,48 @@ export const ResultPanel = ({
   const handleSaveClick = useCallback((): void => {
     void saveChanges();
   }, [saveChanges]);
-  const getColumnWidth = useCallback(
-    (column: string): number => {
-      return columnWidths[column] ?? getDefaultColumnWidth(column);
-    },
-    [columnWidths],
-  );
-  const resultGridStyle = useMemo(() => {
-    const gridWidth =
-      ROW_NUMBER_COLUMN_WIDTH +
-      (queryResult?.columns ?? []).reduce((totalWidth, column) => {
-        return totalWidth + getColumnWidth(column);
-      }, 0);
-
-    return {
-      width: `${gridWidth}px`,
-    } as CSSProperties;
-  }, [getColumnWidth, queryResult?.columns]);
-  const handleColumnResizeStart = useCallback(
-    (column: string, event: ReactPointerEvent<HTMLSpanElement>): void => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const startX = event.clientX;
-      const startWidth = getColumnWidth(column);
-
-      const handlePointerMove = (moveEvent: PointerEvent): void => {
-        const nextWidth = clampColumnWidth(
-          startWidth + moveEvent.clientX - startX,
-        );
-
-        setColumnWidths((currentWidths) => ({
-          ...currentWidths,
-          [column]: nextWidth,
-        }));
-      };
-
-      const handlePointerUp = (): void => {
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerUp);
-      };
-
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-    },
-    [getColumnWidth],
-  );
 
   return (
     <section className="result-panel" style={resultPanelStyle}>
       <div className="result-tabs">
-        <div className="result-tab active">Result</div>
+        <div className="result-tab-group">
+          <div className="result-tab active">Result</div>
+
+          {selectedRowLabel && (
+            <span className="result-selection-badge">{selectedRowLabel}</span>
+          )}
+        </div>
 
         <div className="result-actions">
           <span className={saveMessageClassName}>
             {saveMessage || queryResult?.editMessage}
           </span>
+
+          <button
+            aria-label="Delete selected row"
+            className="delete-row-button"
+            type="button"
+            disabled={!selectedDeleteTarget || isSaving}
+            title={
+              selectedDeleteTarget
+                ? "Delete selected row"
+                : "Select a deletable row"
+            }
+            onClick={handleDeleteClick}
+          >
+            <svg
+              aria-hidden="true"
+              focusable="false"
+              viewBox="0 0 24 24"
+              width="14"
+              height="14"
+            >
+              <path
+                d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 12H7.7L7 9Zm3 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
 
           <button
             className="save-results-button"
@@ -176,18 +174,23 @@ export const ResultPanel = ({
         {queryResult?.ok && hasRows && hasColumns && (
           <table className="result-grid" style={resultGridStyle}>
             <colgroup>
+              <col style={{ width: ROW_SELECTOR_COLUMN_WIDTH }} />
               <col style={{ width: ROW_NUMBER_COLUMN_WIDTH }} />
 
-              {queryResult.columns.map((column) => (
+              {columns.map((column) => (
                 <col key={column} style={{ width: getColumnWidth(column) }} />
               ))}
             </colgroup>
 
             <thead>
               <tr>
+                <th
+                  aria-label="Row selection"
+                  className="row-selector-header"
+                />
                 <th>#</th>
 
-                {queryResult.columns.map((column) => (
+                {columns.map((column) => (
                   <th key={column}>
                     <span className="result-column-label">{column}</span>
                     <span
@@ -206,10 +209,34 @@ export const ResultPanel = ({
 
             <tbody>
               {draftRows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
+                <tr
+                  aria-selected={selectedRowIndex === rowIndex}
+                  className={
+                    selectedRowIndex === rowIndex ? "selected-row" : undefined
+                  }
+                  key={rowIndex}
+                  onClick={() => {
+                    selectRow(rowIndex);
+                  }}
+                >
+                  <td className="row-selector-cell">
+                    <button
+                      aria-label={`Select row ${rowIndex + 1}`}
+                      aria-pressed={selectedRowIndex === rowIndex}
+                      className="row-selector-button"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        selectRow(rowIndex);
+                      }}
+                    >
+                      <span className="row-selector-dot" />
+                    </button>
+                  </td>
+
                   <td>{rowIndex + 1}</td>
 
-                  {queryResult.columns.map((column) => {
+                  {columns.map((column) => {
                     const value = row[column];
                     const isNull = value === null || value === undefined;
                     const columnMetadata = columnMetadataByName.get(column);
@@ -234,6 +261,9 @@ export const ResultPanel = ({
                             className="result-checkbox"
                             type="checkbox"
                             checked={Boolean(value)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
                             onChange={(event) => {
                               updateDraftCell(
                                 rowIndex,
@@ -246,6 +276,9 @@ export const ResultPanel = ({
                           <input
                             className="result-cell-input"
                             value={formatEditableValue(value)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
                             onChange={(event) => {
                               updateDraftCell(
                                 rowIndex,

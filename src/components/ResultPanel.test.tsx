@@ -4,6 +4,7 @@ import { ResultPanel } from "@/components/ResultPanel";
 import type { QueryRunResult } from "@electron/types/query";
 
 const updateCell = vi.fn();
+const deleteRow = vi.fn();
 
 const installPgDeskMock = (): void => {
   Object.defineProperty(window, "pgdesk", {
@@ -11,6 +12,7 @@ const installPgDeskMock = (): void => {
     value: {
       query: {
         updateCell,
+        deleteRow,
       },
     },
   });
@@ -71,6 +73,13 @@ describe("ResultPanel", () => {
       message: "saved",
       rowCount: 1,
     });
+    deleteRow.mockReset();
+    deleteRow.mockResolvedValue({
+      ok: true,
+      message: "Deleted 1 row",
+      rowCount: 1,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   it("renders the empty result state before a query has run", () => {
@@ -125,5 +134,41 @@ describe("ResultPanel", () => {
       value: false,
     });
     expect(screen.getByText("Saved 2 changes")).toBeInTheDocument();
+  });
+
+  it("deletes the selected row after confirmation", async () => {
+    render(
+      <ResultPanel
+        connectionId="connection-1"
+        queryResult={queryResult}
+        queryMessage="SELECT · 1 rows · 2ms"
+        panelHeight={240}
+      />,
+    );
+
+    expect(screen.queryByText("1 row selected")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Select row 1" }));
+
+    expect(screen.getByText("1 row selected")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Delete selected row" }),
+    );
+
+    await waitFor(() => {
+      expect(deleteRow).toHaveBeenCalledTimes(1);
+    });
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Delete this row from public.users?\n\nid = 1\n\nThis cannot be undone.",
+    );
+    expect(deleteRow).toHaveBeenCalledWith({
+      connectionId: "connection-1",
+      tableOid: 10,
+      primaryKeys: [{ columnName: "id", value: 1 }],
+    });
+    expect(screen.queryByDisplayValue("Jane")).not.toBeInTheDocument();
+    expect(screen.getByText("Deleted 1 row")).toBeInTheDocument();
   });
 });

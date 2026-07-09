@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import {
   cancelPostgresQuery,
+  deletePostgresRow,
   explainPostgresQuery,
   runPostgresQuery,
   updatePostgresCell,
@@ -10,6 +11,7 @@ import type {
   QueryCancelPayload,
   QueryExplainPayload,
   QueryRunPayload,
+  QueryRowDeletePayload,
 } from "@electron/types/query";
 
 export const registerQueryIpc = (): void => {
@@ -35,6 +37,13 @@ export const registerQueryIpc = (): void => {
     "query:update-cell",
     async (_event, payload: QueryCellUpdatePayload) => {
       return updatePostgresCell(payload);
+    },
+  );
+
+  ipcMain.handle(
+    "query:delete-row",
+    async (_event, payload: QueryRowDeletePayload) => {
+      return deletePostgresRow(payload);
     },
   );
 };

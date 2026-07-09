@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { QueryRunResult } from "@electron/types/query";
+import type {
+  QueryColumnMetadata,
+  QueryRowDeletePayload,
+  QueryRunResult,
+} from "@electron/types/query";
 
 type DirtyCells = Record<string, unknown>;
+
+type RowDeleteTarget = {
+  tableLabel: string;
+  payload: QueryRowDeletePayload;
+};
 
 const buildCellKey = (rowIndex: number, column: string): string => {
   return `${rowIndex}:${column}`;
@@ -16,6 +25,10 @@ const parseCellKey = (
     rowIndex: Number(cellKey.slice(0, separatorIndex)),
     column: cellKey.slice(separatorIndex + 1),
   };
+};
+
+const hasDuplicateColumns = (columns: string[]): boolean => {
+  return new Set(columns).size !== columns.length;
 };
 
 export const useResultEditing = (
@@ -93,6 +106,108 @@ export const useResultEditing = (
       );
     },
     [queryResult?.columnMetadata],
+  );
+
+  const getRowDeleteTarget = useCallback(
+    (rowIndex: number): RowDeleteTarget | null => {
+      if (!queryResult || hasDuplicateColumns(queryResult.columns)) {
+        return null;
+      }
+
+      const row = draftRows[rowIndex];
+
+      if (!row) {
+        return null;
+      }
+
+      const tableOids = Array.from(
+        new Set(
+          queryResult.columnMetadata
+            .filter((column) => column.tableOid > 0 && column.columnId > 0)
+            .map((column) => column.tableOid),
+        ),
+      );
+
+      if (tableOids.length !== 1) {
+        return null;
+      }
+
+      const tableOid = tableOids[0];
+      const tableColumns = queryResult.columnMetadata.filter((column) => {
+        return column.tableOid === tableOid;
+      });
+      const primaryKeyColumns = tableColumns.filter((column) => {
+        return column.isPrimaryKey && Boolean(column.columnName);
+      });
+      const hasAllPrimaryKeys =
+        primaryKeyColumns.length > 0 &&
+        primaryKeyColumns.every((primaryKeyColumn) => {
+          return primaryKeyColumn.name in row;
+        });
+
+      if (!hasAllPrimaryKeys) {
+        return null;
+      }
+
+      const firstColumn = tableColumns.find((column) => {
+        return Boolean(column.tableSchema && column.tableName);
+      }) as QueryColumnMetadata | undefined;
+
+      if (!firstColumn?.tableSchema || !firstColumn.tableName) {
+        return null;
+      }
+
+      return {
+        tableLabel: `${firstColumn.tableSchema}.${firstColumn.tableName}`,
+        payload: {
+          connectionId,
+          tableOid,
+          primaryKeys: primaryKeyColumns.map((column) => ({
+            columnName: column.columnName ?? column.name,
+            value: row[column.name],
+          })),
+        },
+      };
+    },
+    [connectionId, draftRows, queryResult],
+  );
+
+  const deleteRow = useCallback(
+    async (rowIndex: number): Promise<boolean> => {
+      const target = getRowDeleteTarget(rowIndex);
+
+      if (!target || isSaving) {
+        setSaveMessage("Error: This row cannot be deleted safely");
+        return false;
+      }
+
+      setIsSaving(true);
+      setSaveMessage("Deleting row...");
+
+      try {
+        const result = await window.pgdesk.query.deleteRow(target.payload);
+
+        if (!result.ok) {
+          throw new Error(result.message);
+        }
+
+        setDraftRows((currentRows) => {
+          return currentRows.filter((_, currentRowIndex) => {
+            return currentRowIndex !== rowIndex;
+          });
+        });
+        setDirtyCells({});
+        setSaveMessage(result.message);
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setSaveMessage(`Error: ${message}`);
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [getRowDeleteTarget, isSaving],
   );
 
   const saveChanges = useCallback(async (): Promise<void> => {
@@ -180,7 +295,9 @@ export const useResultEditing = (
     isSaving,
     saveMessage,
     isCellDirty,
+    getRowDeleteTarget,
     updateDraftCell,
+    deleteRow,
     saveChanges,
   };
 };

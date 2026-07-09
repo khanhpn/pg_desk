@@ -16,6 +16,8 @@ import type {
   QueryExplainPayload,
   QueryRunPayload,
   QueryRunResult,
+  QueryRowDeletePayload,
+  QueryRowDeleteResult,
 } from "@electron/types/query";
 
 // import utils
@@ -855,4 +857,130 @@ export const updatePostgresCell = async ({
       rowCount: 0,
     };
   }
+};
+
+export const deletePostgresRowFromPool = async (
+  pool: PgPool,
+  { tableOid, primaryKeys }: QueryRowDeletePayload,
+): Promise<QueryRowDeleteResult> => {
+  if (!Number.isFinite(tableOid) || tableOid <= 0) {
+    return {
+      ok: false,
+      message: "Editable table metadata is invalid",
+      rowCount: 0,
+    };
+  }
+
+  try {
+    const metadataResult = await pool.query<TableColumnRow>(
+      `
+        select
+          n.nspname as schema_name,
+          c.relname as table_name,
+          a.attname as column_name,
+          exists (
+            select 1
+            from pg_index i
+            where i.indrelid = c.oid
+              and i.indisprimary
+              and a.attnum = any(i.indkey)
+          ) as is_primary_key
+        from pg_class c
+        join pg_namespace n on n.oid = c.relnamespace
+        join pg_attribute a on a.attrelid = c.oid
+        where c.oid = $1::oid
+          and c.relkind in ('r', 'p')
+          and a.attnum > 0
+          and not a.attisdropped
+      `,
+      [tableOid],
+    );
+
+    const firstColumn = metadataResult.rows[0];
+
+    if (!firstColumn) {
+      return {
+        ok: false,
+        message: "Editable table metadata is invalid",
+        rowCount: 0,
+      };
+    }
+
+    const primaryKeyColumns = metadataResult.rows
+      .filter((row) => row.is_primary_key)
+      .map((row) => row.column_name);
+    const primaryKeysByName = new Map(
+      primaryKeys.map((key) => [key.columnName, key.value]),
+    );
+
+    const hasExpectedPrimaryKeys =
+      primaryKeyColumns.length > 0 &&
+      primaryKeys.length === primaryKeyColumns.length &&
+      primaryKeyColumns.every((primaryKeyColumn) => {
+        return primaryKeysByName.has(primaryKeyColumn);
+      });
+
+    if (!hasExpectedPrimaryKeys) {
+      return {
+        ok: false,
+        message: "Primary key values are required to delete this row",
+        rowCount: 0,
+      };
+    }
+
+    const deleteValues = primaryKeyColumns.map((columnName) => {
+      return primaryKeysByName.get(columnName);
+    });
+    const whereClause = primaryKeyColumns
+      .map((columnName, index) => {
+        return `${quoteIdentifier(columnName)} = $${index + 1}`;
+      })
+      .join(" and ");
+    const result = await pool.query(
+      `
+        delete from ${quoteIdentifier(firstColumn.schema_name)}.${quoteIdentifier(
+          firstColumn.table_name,
+        )}
+        where ${whereClause}
+      `,
+      deleteValues,
+    );
+    const rowCount = result.rowCount ?? 0;
+
+    if (rowCount === 0) {
+      return {
+        ok: false,
+        message: "No row was deleted. The row may have changed.",
+        rowCount,
+      };
+    }
+
+    return {
+      ok: true,
+      message: `Deleted ${rowCount} row${rowCount === 1 ? "" : "s"}`,
+      rowCount,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      rowCount: 0,
+    };
+  }
+};
+
+export const deletePostgresRow = async (
+  payload: QueryRowDeletePayload,
+): Promise<QueryRowDeleteResult> => {
+  const pool = getActivePostgresPool(payload.connectionId);
+
+  if (!pool) {
+    return {
+      ok: false,
+      message: "No active PostgreSQL connection",
+      rowCount: 0,
+    };
+  }
+
+  return deletePostgresRowFromPool(pool, payload);
 };

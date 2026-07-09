@@ -56,3 +56,18 @@ export type QueryCellUpdateResult = {
   message: string;
   rowCount: number;
 };
+
+export type QueryRowDeletePayload = {
+  connectionId?: string | null;
+  tableOid: number;
+  primaryKeys: Array<{
+    columnName: string;
+    value: unknown;
+  }>;
+};
+
+export type QueryRowDeleteResult = {
+  ok: boolean;
+  message: string;
+  rowCount: number;
+};
