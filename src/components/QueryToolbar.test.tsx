@@ -63,4 +63,26 @@ describe("QueryToolbar", () => {
     expect(screen.getByRole("button", { name: /Explain/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save Tab" })).toBeDisabled();
   });
+
+  it("shows when Run will execute the selected SQL", () => {
+    render(
+      <QueryToolbar
+        isRunningQuery={false}
+        isActiveTabDirty={false}
+        hasSqlSelection
+        selectLimit={100}
+        queryMessage="Ready"
+        handleRunQuery={vi.fn()}
+        handleExplainQuery={vi.fn()}
+        handleStopQuery={vi.fn()}
+        formatActiveTabSql={vi.fn()}
+        saveActiveTab={vi.fn()}
+        setSelectLimit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Run Selection" }),
+    ).toBeInTheDocument();
+  });
 });

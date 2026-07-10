@@ -135,6 +135,39 @@ limit 500;`,
     );
   });
 
+  it("runs only the selected SQL when the editor has a selection", async () => {
+    run.mockResolvedValue({
+      ok: true,
+      message: "ok",
+      columns: ["id"],
+      columnMetadata: [],
+      rows: [{ id: 2 }],
+      rowCount: 1,
+      durationMs: 5,
+      command: "SELECT",
+    });
+    const { result } = renderHook(() => useSqlQuery("connection-1"));
+
+    act(() => {
+      result.current.setSql("select 1 as first;\n\nselect 2 as second;");
+      result.current.setSqlSelection("select 2 as second;");
+    });
+
+    await act(async () => {
+      await result.current.handleRunQuery();
+    });
+
+    expect(run).toHaveBeenCalledWith(
+      `select *
+from (
+select 2 as second
+) as pgdesk_limited_query
+limit 100;`,
+      "connection-1",
+      expect.any(String),
+    );
+  });
+
   it("cancels the active query run", async () => {
     let resolveRun: ((value: unknown) => void) | null = null;
     run.mockReturnValue(

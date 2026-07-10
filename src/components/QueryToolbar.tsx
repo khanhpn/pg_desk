@@ -3,6 +3,7 @@ import { isQueryLimit, type QueryLimit } from "@/utils/queryLimit";
 type QueryToolbarProps = {
   isRunningQuery: boolean;
   isActiveTabDirty: boolean;
+  hasSqlSelection?: boolean;
   selectLimit: QueryLimit;
   queryMessage: string;
   handleRunQuery: () => Promise<void>;
@@ -16,6 +17,7 @@ type QueryToolbarProps = {
 export const QueryToolbar = ({
   isRunningQuery,
   isActiveTabDirty,
+  hasSqlSelection = false,
   selectLimit,
   queryMessage,
   handleRunQuery,
@@ -31,9 +33,14 @@ export const QueryToolbar = ({
         className="run-button"
         type="button"
         disabled={isRunningQuery}
+        title={hasSqlSelection ? "Run selected SQL" : "Run all SQL"}
         onClick={handleRunQuery}
       >
-        {isRunningQuery ? "Running..." : "▶ Run"}
+        {isRunningQuery
+          ? "Running..."
+          : hasSqlSelection
+            ? "Run Selection"
+            : "▶ Run"}
       </button>
 
       <button

@@ -19,7 +19,7 @@ query results, and backing up data.
 - **Schema explorer** — browse schemas, tables, and views in a collapsible tree
   sidebar.
 - **Multi-tab SQL editor** — create, close, save, and restore query tabs between
-  sessions.
+  sessions, then run only the highlighted SQL when a selection is active.
 - **SQL formatter** — format ad hoc SQL from the editor toolbar.
 - **Resizable workspace** — resize the left explorer and result panel to fit the
   task at hand.

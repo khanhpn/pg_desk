@@ -1,5 +1,5 @@
 import { sql as sqlLanguage } from "@codemirror/lang-sql";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap, type ViewUpdate } from "@codemirror/view";
 import { githubDark } from "@uiw/codemirror-theme-github";
 import CodeMirror from "@uiw/react-codemirror";
 import { useCallback, useMemo } from "react";
@@ -7,6 +7,7 @@ import { useCallback, useMemo } from "react";
 type SqlEditorProps = {
   sql: string;
   setSql: (sql: string) => void;
+  setSqlSelection: (selection: string) => void;
   handleRunQuery: () => Promise<void>;
   saveActiveTab: () => void;
 };
@@ -78,6 +79,7 @@ const pgdeskEditorLayout = EditorView.theme(
 export const SqlEditor = ({
   sql,
   setSql,
+  setSqlSelection,
   handleRunQuery,
   saveActiveTab,
 }: SqlEditorProps): JSX.Element => {
@@ -107,6 +109,21 @@ export const SqlEditor = ({
       setSql(value);
     },
     [setSql],
+  );
+  const handleEditorUpdate = useCallback(
+    (update: ViewUpdate): void => {
+      if (!update.selectionSet && !update.docChanged) {
+        return;
+      }
+
+      const selection = update.state.selection.main;
+      setSqlSelection(
+        selection.empty
+          ? ""
+          : update.state.sliceDoc(selection.from, selection.to),
+      );
+    },
+    [setSqlSelection],
   );
 
   return (
@@ -138,6 +155,7 @@ export const SqlEditor = ({
         }}
         extensions={extensions}
         onChange={handleEditorChange}
+        onUpdate={handleEditorUpdate}
       />
     </section>
   );

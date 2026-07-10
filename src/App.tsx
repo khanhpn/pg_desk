@@ -49,6 +49,8 @@ const App = () => {
   const {
     sql,
     setSql,
+    setSqlSelection,
+    hasSqlSelection,
     queryResult,
     queryMessage,
     isRunningQuery,
@@ -195,6 +197,7 @@ const App = () => {
         <QueryToolbar
           isRunningQuery={isRunningQuery}
           isActiveTabDirty={isActiveTabDirty}
+          hasSqlSelection={hasSqlSelection}
           selectLimit={selectLimit}
           queryMessage={queryMessage}
           handleRunQuery={handleRunQuery}
@@ -208,6 +211,7 @@ const App = () => {
         <SqlEditor
           sql={sql}
           setSql={setSql}
+          setSqlSelection={setSqlSelection}
           handleRunQuery={handleRunQuery}
           saveActiveTab={saveActiveTab}
         />

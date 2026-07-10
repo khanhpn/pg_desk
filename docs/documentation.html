@@ -36,7 +36,7 @@
         <div class="container docs-hero-grid">
           <div>
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.37</span>
+              <span class="version-pill">v0.1.38</span>
               <span class="status-pill">User guide</span>
             </div>
             <h1>PgDesk Documentation</h1>
@@ -227,6 +227,13 @@ limit 100;</code></pre>
               <li>
                 Use Save Tab or the keyboard save shortcut to persist tab SQL.
               </li>
+              <li>
+                Highlight one or more SQL statements and click Run Selection to
+                execute only the highlighted text.
+              </li>
+              <li>
+                With no highlighted text, Run executes the entire active tab.
+              </li>
             </ul>
             <div class="info-grid">
               <div>
@@ -242,6 +249,13 @@ limit 100;</code></pre>
               <div>
                 <strong>Keyboard save</strong>
                 <span>Use Command+S on macOS or Ctrl+S on Windows/Linux.</span>
+              </div>
+              <div>
+                <strong>Run context</strong>
+                <span
+                  >Selection-first execution keeps unrelated statements from
+                  running.</span
+                >
               </div>
             </div>
           </section>
@@ -450,7 +464,7 @@ pnpm run test:e2e</code></pre>
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.37</span>
+        <span>PgDesk v0.1.38</span>
         <a href="./index.html">Back to landing page</a>
       </div>
     </footer>

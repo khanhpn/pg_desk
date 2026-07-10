@@ -143,6 +143,9 @@ export const useSqlQuery = (connectionId: string | null) => {
   const [tabs, setTabs] = useState<QueryTab[]>(initialWorkspace.tabs);
   const [activeTabId, setActiveTabId] = useState(initialWorkspace.activeTabId);
   const [selectLimit, setSelectLimit] = useState<QueryLimit>(100);
+  const [selectedSqlByTabId, setSelectedSqlByTabId] = useState<
+    Record<string, string>
+  >({});
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
 
@@ -164,6 +167,30 @@ export const useSqlQuery = (connectionId: string | null) => {
       }));
     },
     [activeTab.id, updateTab],
+  );
+
+  const setSqlSelection = useCallback(
+    (selection: string): void => {
+      const normalizedSelection = selection.trim();
+
+      setSelectedSqlByTabId((currentSelections) => {
+        if (!normalizedSelection) {
+          if (!(activeTab.id in currentSelections)) {
+            return currentSelections;
+          }
+
+          const nextSelections = { ...currentSelections };
+          delete nextSelections[activeTab.id];
+          return nextSelections;
+        }
+
+        return {
+          ...currentSelections,
+          [activeTab.id]: selection,
+        };
+      });
+    },
+    [activeTab.id],
   );
 
   const createTab = useCallback((): void => {
@@ -265,8 +292,11 @@ export const useSqlQuery = (connectionId: string | null) => {
   );
 
   const handleRunQuery = useCallback(async (): Promise<void> => {
-    await runSqlText(activeTab.id, activeTab.sql);
-  }, [activeTab.id, activeTab.sql, runSqlText]);
+    const selectedSql = selectedSqlByTabId[activeTab.id];
+    const sqlToRun = selectedSql?.trim() ? selectedSql : activeTab.sql;
+
+    await runSqlText(activeTab.id, sqlToRun);
+  }, [activeTab.id, activeTab.sql, runSqlText, selectedSqlByTabId]);
 
   const handleStopQuery = useCallback(async (): Promise<void> => {
     const requestId = activeRunIdRef.current;
@@ -392,6 +422,8 @@ export const useSqlQuery = (connectionId: string | null) => {
     activeTabId,
     sql: activeTab.sql,
     setSql,
+    setSqlSelection,
+    hasSqlSelection: Boolean(selectedSqlByTabId[activeTab.id]?.trim()),
     queryResult: activeTab.queryResult,
     queryMessage: activeTab.queryMessage,
     isRunningQuery: activeTab.isRunningQuery,
