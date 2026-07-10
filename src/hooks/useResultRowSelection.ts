@@ -1,91 +1,67 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QueryRunResult } from "@electron/types/query";
 
-type RowDeleteTarget = {
-  tableLabel: string;
-  payload: {
-    primaryKeys: Array<{
-      columnName: string;
-      value: unknown;
-    }>;
-  };
-};
-
 type UseResultRowSelectionOptions = {
-  deleteRow: (rowIndex: number) => Promise<boolean>;
-  formatCellValue: (value: unknown) => string;
-  getRowDeleteTarget: (rowIndex: number) => RowDeleteTarget | null;
-  isDeletingDisabled: boolean;
+  rowIds: string[];
   queryResult: QueryRunResult | null;
 };
 
 export const useResultRowSelection = ({
-  deleteRow,
-  formatCellValue,
-  getRowDeleteTarget,
-  isDeletingDisabled,
+  rowIds,
   queryResult,
 }: UseResultRowSelectionOptions) => {
-  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const rowIdsKey = rowIds.join("\u001f");
+  const validRowIds = useMemo(() => new Set(rowIds), [rowIds]);
+  const selectedRowCount = selectedRowIds.length;
+  const allRowsSelected =
+    rowIds.length > 0 && selectedRowCount === rowIds.length;
 
-  const selectedDeleteTarget = useMemo(() => {
-    if (selectedRowIndex === null) {
-      return null;
-    }
+  const toggleRow = useCallback(
+    (rowId: string): void => {
+      if (!validRowIds.has(rowId)) {
+        return;
+      }
 
-    return getRowDeleteTarget(selectedRowIndex);
-  }, [getRowDeleteTarget, selectedRowIndex]);
+      setSelectedRowIds((currentRowIds) => {
+        return currentRowIds.includes(rowId)
+          ? currentRowIds.filter((currentRowId) => currentRowId !== rowId)
+          : [...currentRowIds, rowId];
+      });
+    },
+    [validRowIds],
+  );
 
-  const selectedRowLabel = selectedRowIndex === null ? "" : "1 row selected";
+  const toggleAllRows = useCallback((): void => {
+    setSelectedRowIds(allRowsSelected ? [] : [...rowIds]);
+  }, [allRowsSelected, rowIds]);
 
-  const selectRow = useCallback((rowIndex: number): void => {
-    setSelectedRowIndex(rowIndex);
+  const clearSelection = useCallback((): void => {
+    setSelectedRowIds([]);
   }, []);
 
-  const handleDeleteClick = useCallback((): void => {
-    if (
-      selectedRowIndex === null ||
-      !selectedDeleteTarget ||
-      isDeletingDisabled
-    ) {
-      return;
-    }
-
-    const primaryKeySummary = selectedDeleteTarget.payload.primaryKeys
-      .map((key) => {
-        return `${key.columnName} = ${formatCellValue(key.value)}`;
-      })
-      .join("\n");
-    const confirmed = window.confirm(
-      `Delete this row from ${selectedDeleteTarget.tableLabel}?\n\n${primaryKeySummary}\n\nThis cannot be undone.`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    void deleteRow(selectedRowIndex).then((deleted) => {
-      if (deleted) {
-        setSelectedRowIndex(null);
-      }
-    });
-  }, [
-    deleteRow,
-    formatCellValue,
-    isDeletingDisabled,
-    selectedDeleteTarget,
-    selectedRowIndex,
-  ]);
-
   useEffect(() => {
-    setSelectedRowIndex(null);
+    setSelectedRowIds([]);
   }, [queryResult]);
 
+  useEffect(() => {
+    setSelectedRowIds((currentRowIds) => {
+      const nextRowIds = currentRowIds.filter((rowId) =>
+        validRowIds.has(rowId),
+      );
+
+      return nextRowIds.length === currentRowIds.length
+        ? currentRowIds
+        : nextRowIds;
+    });
+  }, [rowIdsKey, validRowIds]);
+
   return {
-    handleDeleteClick,
-    selectRow,
-    selectedDeleteTarget,
-    selectedRowIndex,
-    selectedRowLabel,
+    selectedRowIds,
+    selectedRowCount,
+    allRowsSelected,
+    toggleRow,
+    toggleAllRows,
+    clearSelection,
   };
 };

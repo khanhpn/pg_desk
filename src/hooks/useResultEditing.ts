@@ -1,203 +1,413 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   QueryColumnMetadata,
-  QueryRowDeletePayload,
   QueryRunResult,
 } from "@electron/types/query";
 
-type DirtyCells = Record<string, unknown>;
+export type EditableResultRow = {
+  id: string;
+  values: Record<string, unknown>;
+  isNew: boolean;
+};
 
-type RowDeleteTarget = {
+type DirtyCells = Record<string, Record<string, unknown>>;
+
+export type RowDeleteTarget = {
   tableLabel: string;
-  payload: QueryRowDeletePayload;
-};
-
-const buildCellKey = (rowIndex: number, column: string): string => {
-  return `${rowIndex}:${column}`;
-};
-
-const parseCellKey = (
-  cellKey: string,
-): { rowIndex: number; column: string } => {
-  const separatorIndex = cellKey.indexOf(":");
-
-  return {
-    rowIndex: Number(cellKey.slice(0, separatorIndex)),
-    column: cellKey.slice(separatorIndex + 1),
+  payload: {
+    connectionId: string | null;
+    tableOid: number;
+    primaryKeys: Array<{
+      columnName: string;
+      value: unknown;
+    }>;
   };
+};
+
+type TableContext = {
+  tableOid: number;
+  tableLabel: string;
+  primaryKeyColumns: QueryColumnMetadata[];
+  editableColumns: QueryColumnMetadata[];
+};
+
+let nextResultRowId = 0;
+
+const createResultRowId = (prefix: "result" | "new"): string => {
+  nextResultRowId += 1;
+  return `${prefix}-${nextResultRowId}`;
 };
 
 const hasDuplicateColumns = (columns: string[]): boolean => {
   return new Set(columns).size !== columns.length;
 };
 
+const getTableContext = (
+  queryResult: QueryRunResult | null,
+): TableContext | null => {
+  if (!queryResult || hasDuplicateColumns(queryResult.columns)) {
+    return null;
+  }
+
+  const tableOids = Array.from(
+    new Set(
+      queryResult.columnMetadata
+        .filter((column) => column.tableOid > 0 && column.columnId > 0)
+        .map((column) => column.tableOid),
+    ),
+  );
+
+  if (tableOids.length !== 1) {
+    return null;
+  }
+
+  const tableOid = tableOids[0];
+  const tableColumns = queryResult.columnMetadata.filter((column) => {
+    return column.tableOid === tableOid && column.columnId > 0;
+  });
+  const firstColumn = tableColumns.find((column) => {
+    return Boolean(column.tableSchema && column.tableName);
+  });
+
+  if (!firstColumn?.tableSchema || !firstColumn.tableName) {
+    return null;
+  }
+
+  const primaryKeyColumns = tableColumns.filter((column) => {
+    return column.isPrimaryKey && Boolean(column.columnName);
+  });
+  const editableColumns = tableColumns.filter((column) => {
+    return (
+      column.isEditable && !column.isPrimaryKey && Boolean(column.columnName)
+    );
+  });
+
+  if (primaryKeyColumns.length === 0 || editableColumns.length === 0) {
+    return null;
+  }
+
+  return {
+    tableOid,
+    tableLabel: `${firstColumn.tableSchema}.${firstColumn.tableName}`,
+    primaryKeyColumns,
+    editableColumns,
+  };
+};
+
+const getPersistableValues = (
+  values: Record<string, unknown>,
+  columnMetadataByName: Map<string, QueryColumnMetadata>,
+): Record<string, unknown> => {
+  return Object.entries(values).reduce<Record<string, unknown>>(
+    (persistableValues, [columnName, value]) => {
+      const metadata = columnMetadataByName.get(columnName);
+
+      if (!metadata?.isEditable || !metadata.columnName) {
+        throw new Error(`This cell cannot be saved: ${columnName}`);
+      }
+
+      persistableValues[metadata.columnName] = value;
+      return persistableValues;
+    },
+    {},
+  );
+};
+
 export const useResultEditing = (
   queryResult: QueryRunResult | null,
   connectionId: string | null,
+  refreshResult?: () => Promise<void>,
 ) => {
-  const [draftRows, setDraftRows] = useState<Record<string, unknown>[]>([]);
+  const [draftRows, setDraftRows] = useState<EditableResultRow[]>([]);
   const [dirtyCells, setDirtyCells] = useState<DirtyCells>({});
   const [saveMessage, setSaveMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
-  const dirtyCellCount = useMemo(() => {
-    return Object.keys(dirtyCells).length;
-  }, [dirtyCells]);
-
-  const hasDirtyCells = dirtyCellCount > 0;
 
   const columnMetadataByName = useMemo(() => {
     return new Map(
       queryResult?.columnMetadata.map((column) => [column.name, column]) ?? [],
     );
   }, [queryResult?.columnMetadata]);
+  const tableContext = useMemo(
+    () => getTableContext(queryResult),
+    [queryResult],
+  );
+  const dirtyCellCount = useMemo(() => {
+    return Object.values(dirtyCells).reduce((count, rowCells) => {
+      return count + Object.keys(rowCells).length;
+    }, 0);
+  }, [dirtyCells]);
+  const hasPendingChanges = dirtyCellCount > 0;
+  const canInsertRows = Boolean(tableContext);
 
   useEffect(() => {
-    setDraftRows(queryResult?.rows.map((row) => ({ ...row })) ?? []);
+    setDraftRows(
+      queryResult?.rows.map((row) => ({
+        id: createResultRowId("result"),
+        values: { ...row },
+        isNew: false,
+      })) ?? [],
+    );
     setDirtyCells({});
     setSaveMessage("");
   }, [queryResult]);
 
+  const getRow = useCallback(
+    (rowId: string): EditableResultRow | undefined => {
+      return draftRows.find((row) => row.id === rowId);
+    },
+    [draftRows],
+  );
+
+  const addRow = useCallback((): string | null => {
+    if (!queryResult || !tableContext || isSaving) {
+      return null;
+    }
+
+    const row: EditableResultRow = {
+      id: createResultRowId("new"),
+      values: Object.fromEntries(
+        queryResult.columns.map((column) => [column, null]),
+      ),
+      isNew: true,
+    };
+
+    setDraftRows((currentRows) => [...currentRows, row]);
+    setSaveMessage("");
+    return row.id;
+  }, [isSaving, queryResult, tableContext]);
+
   const updateDraftCell = useCallback(
-    (rowIndex: number, column: string, value: unknown): void => {
+    (rowId: string, column: string, value: unknown): void => {
+      if (!getRow(rowId)) {
+        return;
+      }
+
       setDraftRows((currentRows) => {
-        return currentRows.map((row, currentRowIndex) => {
-          if (currentRowIndex !== rowIndex) {
+        return currentRows.map((row) => {
+          if (row.id !== rowId) {
             return row;
           }
 
           return {
             ...row,
-            [column]: value,
+            values: {
+              ...row.values,
+              [column]: value,
+            },
           };
         });
       });
 
       setDirtyCells((currentDirtyCells) => ({
         ...currentDirtyCells,
-        [buildCellKey(rowIndex, column)]: value,
+        [rowId]: {
+          ...currentDirtyCells[rowId],
+          [column]: value,
+        },
       }));
       setSaveMessage("");
     },
-    [],
+    [getRow],
   );
 
   const isCellDirty = useCallback(
-    (rowIndex: number, column: string): boolean => {
-      return buildCellKey(rowIndex, column) in dirtyCells;
+    (rowId: string, column: string): boolean => {
+      return column in (dirtyCells[rowId] ?? {});
     },
     [dirtyCells],
   );
 
-  const buildPrimaryKeys = useCallback(
-    (
-      row: Record<string, unknown>,
-      tableOid: number,
-    ): Array<{ columnName: string; value: unknown }> => {
-      return (
-        queryResult?.columnMetadata
-          .filter((column) => {
-            return column.tableOid === tableOid && column.isPrimaryKey;
-          })
-          .map((column) => ({
-            columnName: column.columnName ?? column.name,
-            value: row[column.name],
-          })) ?? []
-      );
-    },
-    [queryResult?.columnMetadata],
-  );
-
   const getRowDeleteTarget = useCallback(
-    (rowIndex: number): RowDeleteTarget | null => {
-      if (!queryResult || hasDuplicateColumns(queryResult.columns)) {
+    (rowId: string): RowDeleteTarget | null => {
+      const row = getRow(rowId);
+
+      if (!row || row.isNew || !tableContext) {
         return null;
       }
 
-      const row = draftRows[rowIndex];
-
-      if (!row) {
-        return null;
-      }
-
-      const tableOids = Array.from(
-        new Set(
-          queryResult.columnMetadata
-            .filter((column) => column.tableOid > 0 && column.columnId > 0)
-            .map((column) => column.tableOid),
-        ),
-      );
-
-      if (tableOids.length !== 1) {
-        return null;
-      }
-
-      const tableOid = tableOids[0];
-      const tableColumns = queryResult.columnMetadata.filter((column) => {
-        return column.tableOid === tableOid;
+      const primaryKeys = tableContext.primaryKeyColumns.map((column) => ({
+        columnName: column.columnName as string,
+        value: row.values[column.name],
+      }));
+      const hasAllPrimaryKeys = primaryKeys.every(({ value }) => {
+        return value !== null && value !== undefined;
       });
-      const primaryKeyColumns = tableColumns.filter((column) => {
-        return column.isPrimaryKey && Boolean(column.columnName);
-      });
-      const hasAllPrimaryKeys =
-        primaryKeyColumns.length > 0 &&
-        primaryKeyColumns.every((primaryKeyColumn) => {
-          return primaryKeyColumn.name in row;
-        });
 
       if (!hasAllPrimaryKeys) {
         return null;
       }
 
-      const firstColumn = tableColumns.find((column) => {
-        return Boolean(column.tableSchema && column.tableName);
-      }) as QueryColumnMetadata | undefined;
-
-      if (!firstColumn?.tableSchema || !firstColumn.tableName) {
-        return null;
-      }
-
       return {
-        tableLabel: `${firstColumn.tableSchema}.${firstColumn.tableName}`,
+        tableLabel: tableContext.tableLabel,
         payload: {
           connectionId,
-          tableOid,
-          primaryKeys: primaryKeyColumns.map((column) => ({
-            columnName: column.columnName ?? column.name,
-            value: row[column.name],
-          })),
+          tableOid: tableContext.tableOid,
+          primaryKeys,
         },
       };
     },
-    [connectionId, draftRows, queryResult],
+    [connectionId, getRow, tableContext],
   );
 
-  const deleteRow = useCallback(
-    async (rowIndex: number): Promise<boolean> => {
-      const target = getRowDeleteTarget(rowIndex);
+  const buildTableChangePayload = useCallback(
+    (selectedRowIds: string[]) => {
+      if (!tableContext) {
+        throw new Error("This result cannot be edited safely");
+      }
 
-      if (!target || isSaving) {
-        setSaveMessage("Error: This row cannot be deleted safely");
+      const selectedIdSet = new Set(selectedRowIds);
+      const updates: Array<{
+        primaryKeys: Array<{ columnName: string; value: unknown }>;
+        values: Record<string, unknown>;
+      }> = [];
+      const inserts: Array<{ values: Record<string, unknown> }> = [];
+      const deletes: Array<{
+        primaryKeys: Array<{ columnName: string; value: unknown }>;
+      }> = [];
+
+      draftRows.forEach((row, rowIndex) => {
+        const rowDirtyCells = dirtyCells[row.id] ?? {};
+
+        if (row.isNew) {
+          if (Object.keys(rowDirtyCells).length > 0) {
+            inserts.push({
+              values: getPersistableValues(rowDirtyCells, columnMetadataByName),
+            });
+          }
+          return;
+        }
+
+        if (Object.keys(rowDirtyCells).length > 0) {
+          const target = getRowDeleteTarget(row.id);
+
+          if (!target) {
+            throw new Error(
+              `Row ${rowIndex + 1} is missing a complete primary key`,
+            );
+          }
+
+          updates.push({
+            primaryKeys: target.payload.primaryKeys,
+            values: getPersistableValues(rowDirtyCells, columnMetadataByName),
+          });
+        }
+
+        if (selectedIdSet.has(row.id)) {
+          const target = getRowDeleteTarget(row.id);
+
+          if (!target) {
+            throw new Error(
+              `Row ${rowIndex + 1} is missing a complete primary key`,
+            );
+          }
+
+          deletes.push({ primaryKeys: target.payload.primaryKeys });
+        }
+      });
+
+      return {
+        connectionId,
+        tableOid: tableContext.tableOid,
+        updates,
+        inserts,
+        deletes,
+      };
+    },
+    [
+      columnMetadataByName,
+      connectionId,
+      dirtyCells,
+      draftRows,
+      getRowDeleteTarget,
+      tableContext,
+    ],
+  );
+
+  const saveChanges = useCallback(async (): Promise<boolean> => {
+    if (!hasPendingChanges || isSaving) {
+      return false;
+    }
+
+    setIsSaving(true);
+    setSaveMessage("Saving changes...");
+
+    try {
+      const payload = buildTableChangePayload([]);
+      const result = await window.pgdesk.query.applyTableChanges(payload);
+
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
+
+      setDirtyCells({});
+
+      if (refreshResult) {
+        await refreshResult();
+      } else {
+        setDraftRows((currentRows) => currentRows.filter((row) => !row.isNew));
+      }
+
+      setSaveMessage(result.message);
+
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setSaveMessage(`Error: ${message}`);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [buildTableChangePayload, hasPendingChanges, isSaving, refreshResult]);
+
+  const deleteSelectedRows = useCallback(
+    async (selectedRowIds: string[]): Promise<boolean> => {
+      if (selectedRowIds.length === 0 || isSaving) {
         return false;
       }
 
       setIsSaving(true);
-      setSaveMessage("Deleting row...");
+      setSaveMessage("Deleting rows...");
 
       try {
-        const result = await window.pgdesk.query.deleteRow(target.payload);
+        const payload = buildTableChangePayload(selectedRowIds);
+        const selectedIdSet = new Set(selectedRowIds);
+        const persistedDeletes = payload.deletes.length;
+        let deleteMessage: string;
 
-        if (!result.ok) {
-          throw new Error(result.message);
+        if (persistedDeletes > 0) {
+          const result = await window.pgdesk.query.applyTableChanges({
+            ...payload,
+            updates: [],
+            inserts: [],
+          });
+
+          if (!result.ok) {
+            throw new Error(result.message);
+          }
+
+          deleteMessage = result.message;
+        } else {
+          deleteMessage = `Removed ${selectedRowIds.length} draft row${selectedRowIds.length === 1 ? "" : "s"}`;
         }
 
         setDraftRows((currentRows) => {
-          return currentRows.filter((_, currentRowIndex) => {
-            return currentRowIndex !== rowIndex;
-          });
+          return currentRows.filter((row) => !selectedIdSet.has(row.id));
         });
-        setDirtyCells({});
-        setSaveMessage(result.message);
+        setDirtyCells((currentDirtyCells) => {
+          return Object.fromEntries(
+            Object.entries(currentDirtyCells).filter(
+              ([rowId]) => !selectedIdSet.has(rowId),
+            ),
+          );
+        });
+
+        if (refreshResult && persistedDeletes > 0) {
+          await refreshResult();
+        }
+
+        setSaveMessage(deleteMessage);
+
         return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -207,72 +417,16 @@ export const useResultEditing = (
         setIsSaving(false);
       }
     },
-    [getRowDeleteTarget, isSaving],
+    [buildTableChangePayload, isSaving, refreshResult],
   );
-
-  const saveChanges = useCallback(async (): Promise<void> => {
-    if (!queryResult || !hasDirtyCells || isSaving) {
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveMessage("Saving changes...");
-
-    try {
-      for (const cellKey of Object.keys(dirtyCells)) {
-        const { rowIndex, column } = parseCellKey(cellKey);
-        const columnMetadata = columnMetadataByName.get(column);
-        const row = draftRows[rowIndex];
-
-        if (!row || !columnMetadata?.isEditable || !columnMetadata.columnName) {
-          throw new Error("This cell cannot be saved");
-        }
-
-        const result = await window.pgdesk.query.updateCell({
-          connectionId,
-          tableOid: columnMetadata.tableOid,
-          columnName: columnMetadata.columnName,
-          primaryKeys: buildPrimaryKeys(row, columnMetadata.tableOid),
-          value: row[column],
-        });
-
-        if (!result.ok) {
-          throw new Error(result.message);
-        }
-      }
-
-      setDirtyCells({});
-      setSaveMessage(
-        `Saved ${dirtyCellCount} change${dirtyCellCount === 1 ? "" : "s"}`,
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setSaveMessage(`Error: ${message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    buildPrimaryKeys,
-    columnMetadataByName,
-    dirtyCellCount,
-    dirtyCells,
-    draftRows,
-    hasDirtyCells,
-    isSaving,
-    connectionId,
-    queryResult,
-  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (
         !(event.metaKey || event.ctrlKey) ||
-        event.key.toLowerCase() !== "s"
+        event.key.toLowerCase() !== "s" ||
+        !hasPendingChanges
       ) {
-        return;
-      }
-
-      if (!hasDirtyCells) {
         return;
       }
 
@@ -285,19 +439,22 @@ export const useResultEditing = (
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hasDirtyCells, saveChanges]);
+  }, [hasPendingChanges, saveChanges]);
 
   return {
     draftRows,
     columnMetadataByName,
     dirtyCellCount,
-    hasDirtyCells,
+    hasDirtyCells: hasPendingChanges,
+    hasPendingChanges,
+    canInsertRows,
     isSaving,
     saveMessage,
     isCellDirty,
     getRowDeleteTarget,
+    addRow,
     updateDraftCell,
-    deleteRow,
+    deleteSelectedRows,
     saveChanges,
   };
 };

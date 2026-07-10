@@ -35,7 +35,7 @@
         <div class="container hero-grid">
           <div class="hero-copy">
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.36</span>
+              <span class="version-pill">v0.1.37</span>
               <span class="status-pill">PostgreSQL desktop client</span>
             </div>
 
@@ -182,8 +182,8 @@
               <span class="feature-icon">05</span>
               <h3>Editable result grid</h3>
               <p>
-                Edit returned rows directly when cells can be mapped to table
-                metadata and primary keys.
+                Select multiple rows, add a draft row, save changes, and delete
+                safely when table metadata and primary keys are available.
               </p>
             </article>
 
@@ -238,8 +238,8 @@
             </li>
             <li>
               <span>Edit</span>
-              Update editable cells in the result grid, including boolean
-              checkbox values.
+              Select rows, add drafts, update values, save a batch, or delete
+              selected rows from the result grid.
             </li>
             <li>
               <span>Protect</span>
@@ -280,6 +280,17 @@
               />
               <figcaption>
                 Connection profile form beside the SQL editor and query toolbar.
+              </figcaption>
+            </figure>
+
+            <figure>
+              <img
+                src="./assets/result-table-editing.png"
+                alt="PgDesk result table with selected rows and icon actions"
+              />
+              <figcaption>
+                Compact result-table actions for adding, saving, and deleting
+                rows with multi-select support.
               </figcaption>
             </figure>
           </div>
@@ -326,7 +337,7 @@
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.36</span>
+        <span>PgDesk v0.1.37</span>
         <span>Built for PostgreSQL developers.</span>
       </div>
     </footer>

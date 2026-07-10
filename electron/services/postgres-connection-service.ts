@@ -18,6 +18,8 @@ import type {
   QueryRunResult,
   QueryRowDeletePayload,
   QueryRowDeleteResult,
+  QueryTableChangePayload,
+  QueryTableChangeResult,
 } from "@electron/types/query";
 
 // import utils
@@ -967,6 +969,262 @@ export const deletePostgresRowFromPool = async (
       rowCount: 0,
     };
   }
+};
+
+const buildTableMetadataQuery = (): string => {
+  return `
+    select
+      n.nspname as schema_name,
+      c.relname as table_name,
+      a.attname as column_name,
+      exists (
+        select 1
+        from pg_index i
+        where i.indrelid = c.oid
+          and i.indisprimary
+          and a.attnum = any(i.indkey)
+      ) as is_primary_key
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid
+    where c.oid = $1::oid
+      and c.relkind in ('r', 'p')
+      and a.attnum > 0
+      and not a.attisdropped
+  `;
+};
+
+const validateTableChangePrimaryKeys = (
+  primaryKeys: Array<{ columnName: string; value: unknown }>,
+  primaryKeyColumns: string[],
+  action: "save" | "delete",
+): void => {
+  const primaryKeysByName = new Map(
+    primaryKeys.map((key) => [key.columnName, key.value]),
+  );
+  const hasExpectedPrimaryKeys =
+    primaryKeys.length === primaryKeyColumns.length &&
+    primaryKeyColumns.every((columnName) => primaryKeysByName.has(columnName));
+
+  if (!hasExpectedPrimaryKeys) {
+    throw new Error(`Primary key values are required to ${action} this row`);
+  }
+};
+
+const validateTableChangeColumns = (
+  values: Record<string, unknown>,
+  tableColumns: Map<string, TableColumnRow>,
+): Array<[string, unknown]> => {
+  const entries = Object.entries(values);
+
+  if (entries.length === 0) {
+    throw new Error("At least one editable value is required");
+  }
+
+  entries.forEach(([columnName]) => {
+    const column = tableColumns.get(columnName);
+
+    if (!column || column.is_primary_key) {
+      throw new Error(`This column cannot be changed: ${columnName}`);
+    }
+  });
+
+  return entries;
+};
+
+export const applyPostgresTableChangesFromPool = async (
+  pool: PgPool,
+  { tableOid, updates, inserts, deletes }: QueryTableChangePayload,
+): Promise<QueryTableChangeResult> => {
+  if (!Number.isFinite(tableOid) || tableOid <= 0) {
+    return {
+      ok: false,
+      message: "Editable table metadata is invalid",
+      rowCount: 0,
+    };
+  }
+
+  if (updates.length === 0 && inserts.length === 0 && deletes.length === 0) {
+    return {
+      ok: true,
+      message: "No changes to apply",
+      rowCount: 0,
+    };
+  }
+
+  let client: PoolClient | null = null;
+
+  try {
+    client = await pool.connect();
+    const metadataResult = await client.query<TableColumnRow>(
+      buildTableMetadataQuery(),
+      [tableOid],
+    );
+    const firstColumn = metadataResult.rows[0];
+
+    if (!firstColumn) {
+      return {
+        ok: false,
+        message: "Editable table metadata is invalid",
+        rowCount: 0,
+      };
+    }
+
+    const tableColumns = new Map(
+      metadataResult.rows.map((column) => [column.column_name, column]),
+    );
+    const primaryKeyColumns = metadataResult.rows
+      .filter((column) => column.is_primary_key)
+      .map((column) => column.column_name);
+
+    if (
+      primaryKeyColumns.length === 0 &&
+      (updates.length > 0 || deletes.length > 0)
+    ) {
+      return {
+        ok: false,
+        message: "Primary key metadata is required to change this table",
+        rowCount: 0,
+      };
+    }
+
+    const tableName = `${quoteIdentifier(firstColumn.schema_name)}.${quoteIdentifier(
+      firstColumn.table_name,
+    )}`;
+
+    const updateOperations = updates.map((update) => {
+      validateTableChangePrimaryKeys(
+        update.primaryKeys,
+        primaryKeyColumns,
+        "save",
+      );
+      return {
+        values: validateTableChangeColumns(update.values, tableColumns),
+        primaryKeys: update.primaryKeys,
+      };
+    });
+    const insertOperations = inserts.map((insert) => {
+      return validateTableChangeColumns(insert.values, tableColumns);
+    });
+    const deleteOperations = deletes.map((del) => {
+      validateTableChangePrimaryKeys(
+        del.primaryKeys,
+        primaryKeyColumns,
+        "delete",
+      );
+      return del.primaryKeys;
+    });
+
+    await client.query("begin");
+    let rowCount = 0;
+
+    for (const update of updateOperations) {
+      const values = [
+        ...update.values.map(([, value]) => value),
+        ...update.primaryKeys.map((key) => key.value),
+      ];
+      const setClause = update.values
+        .map(([columnName], index) => {
+          return `${quoteIdentifier(columnName)} = $${index + 1}`;
+        })
+        .join(", ");
+      const whereClause = update.primaryKeys
+        .map((key, index) => {
+          return `${quoteIdentifier(key.columnName)} = $${
+            update.values.length + index + 1
+          }`;
+        })
+        .join(" and ");
+      const result = await client.query(
+        `update ${tableName} set ${setClause} where ${whereClause}`,
+        values,
+      );
+
+      if ((result.rowCount ?? 0) !== 1) {
+        throw new Error("No row was updated. The row may have changed.");
+      }
+
+      rowCount += 1;
+    }
+
+    for (const insert of insertOperations) {
+      const values = insert.map(([, value]) => value);
+      const columns = insert
+        .map(([columnName]) => quoteIdentifier(columnName))
+        .join(", ");
+      const placeholders = insert.map((_, index) => `$${index + 1}`).join(", ");
+      const result = await client.query(
+        `insert into ${tableName} (${columns}) values (${placeholders})`,
+        values,
+      );
+      rowCount += result.rowCount ?? 0;
+    }
+
+    for (const primaryKeys of deleteOperations) {
+      const values = primaryKeyColumns.map((columnName) => {
+        return primaryKeys.find((key) => key.columnName === columnName)?.value;
+      });
+      const whereClause = primaryKeyColumns
+        .map((columnName, index) => {
+          return `${quoteIdentifier(columnName)} = $${index + 1}`;
+        })
+        .join(" and ");
+      const result = await client.query(
+        `delete from ${tableName} where ${whereClause}`,
+        values,
+      );
+
+      if ((result.rowCount ?? 0) !== 1) {
+        throw new Error("No row was deleted. The row may have changed.");
+      }
+
+      rowCount += 1;
+    }
+
+    await client.query("commit");
+    const isDeleteOnly =
+      updates.length === 0 && inserts.length === 0 && deletes.length > 0;
+    const noun = isDeleteOnly ? "row" : "change";
+    const verb = isDeleteOnly ? "Deleted" : "Saved";
+
+    return {
+      ok: true,
+      message: `${verb} ${rowCount} ${noun}${rowCount === 1 ? "" : "s"}`,
+      rowCount,
+    };
+  } catch (error) {
+    if (client) {
+      try {
+        await client.query("rollback");
+      } catch {
+        // Preserve the original database error when rollback itself fails.
+      }
+    }
+
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+      rowCount: 0,
+    };
+  } finally {
+    client?.release();
+  }
+};
+
+export const applyPostgresTableChanges = async (
+  payload: QueryTableChangePayload,
+): Promise<QueryTableChangeResult> => {
+  const pool = getActivePostgresPool(payload.connectionId);
+
+  if (!pool) {
+    return {
+      ok: false,
+      message: "No active PostgreSQL connection",
+      rowCount: 0,
+    };
+  }
+
+  return applyPostgresTableChangesFromPool(pool, payload);
 };
 
 export const deletePostgresRow = async (

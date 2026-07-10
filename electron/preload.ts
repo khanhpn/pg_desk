@@ -155,6 +155,33 @@ type QueryRowDeleteResult = {
   rowCount: number;
 };
 
+type QueryTableChangePayload = {
+  connectionId?: string | null;
+  tableOid: number;
+  updates: Array<{
+    primaryKeys: Array<{
+      columnName: string;
+      value: unknown;
+    }>;
+    values: Record<string, unknown>;
+  }>;
+  inserts: Array<{
+    values: Record<string, unknown>;
+  }>;
+  deletes: Array<{
+    primaryKeys: Array<{
+      columnName: string;
+      value: unknown;
+    }>;
+  }>;
+};
+
+type QueryTableChangeResult = {
+  ok: boolean;
+  message: string;
+  rowCount: number;
+};
+
 type QueryCancelResult = {
   ok: boolean;
   message: string;
@@ -363,6 +390,12 @@ const pgdeskApi = {
       payload: QueryRowDeletePayload,
     ): Promise<QueryRowDeleteResult> => {
       return ipcRenderer.invoke("query:delete-row", payload);
+    },
+
+    applyTableChanges: (
+      payload: QueryTableChangePayload,
+    ): Promise<QueryTableChangeResult> => {
+      return ipcRenderer.invoke("query:apply-table-changes", payload);
     },
   },
 

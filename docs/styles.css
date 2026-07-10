@@ -556,6 +556,27 @@ h3 {
   margin-top: 18px;
 }
 
+.feature-screenshot {
+  margin: 22px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 14px 36px rgba(20, 33, 61, 0.08);
+}
+
+.feature-screenshot img {
+  width: 100%;
+  display: block;
+}
+
+.feature-screenshot figcaption {
+  padding: 13px 15px 15px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+}
+
 .split-panel {
   display: flex;
   align-items: center;

@@ -71,3 +71,29 @@ export type QueryRowDeleteResult = {
   message: string;
   rowCount: number;
 };
+
+export type QueryPrimaryKeyValue = {
+  columnName: string;
+  value: unknown;
+};
+
+export type QueryTableChangePayload = {
+  connectionId?: string | null;
+  tableOid: number;
+  updates: Array<{
+    primaryKeys: QueryPrimaryKeyValue[];
+    values: Record<string, unknown>;
+  }>;
+  inserts: Array<{
+    values: Record<string, unknown>;
+  }>;
+  deletes: Array<{
+    primaryKeys: QueryPrimaryKeyValue[];
+  }>;
+};
+
+export type QueryTableChangeResult = {
+  ok: boolean;
+  message: string;
+  rowCount: number;
+};

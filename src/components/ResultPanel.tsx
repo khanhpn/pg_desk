@@ -1,6 +1,9 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useResultColumnSizing } from "@/hooks/useResultColumnSizing";
-import { useResultEditing } from "@/hooks/useResultEditing";
+import {
+  useResultEditing,
+  type EditableResultRow,
+} from "@/hooks/useResultEditing";
 import { useResultRowSelection } from "@/hooks/useResultRowSelection";
 import type { QueryRunResult } from "@electron/types/query";
 import type { CSSProperties } from "react";
@@ -16,6 +19,7 @@ type ResultPanelProps = {
   queryResult: QueryRunResult | null;
   queryMessage: string;
   panelHeight: number;
+  refreshResult?: () => Promise<void>;
 };
 
 const formatCellValue = (value: unknown): string => {
@@ -42,14 +46,55 @@ const formatEditableValue = (value: unknown): string => {
   return formatCellValue(value);
 };
 
+const AddIcon = (): JSX.Element => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+  >
+    <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" fill="currentColor" />
+  </svg>
+);
+
+const SaveIcon = (): JSX.Element => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+  >
+    <path
+      d="M5 3h11.2L20 6.8V21H5V3Zm2 2v5h9V5H7Zm0 9v5h10v-5H7Zm2-7h5V6H9v1Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const DeleteIcon = (): JSX.Element => (
+  <svg
+    aria-hidden="true"
+    focusable="false"
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+  >
+    <path
+      d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 12H7.7L7 9Zm3 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
 export const ResultPanel = ({
   connectionId,
   queryResult,
   queryMessage,
   panelHeight,
+  refreshResult,
 }: ResultPanelProps): JSX.Element => {
-  const hasRows = Boolean(queryResult?.rows.length);
-  const hasColumns = Boolean(queryResult?.columns.length);
   const columns = useMemo(
     () => queryResult?.columns ?? [],
     [queryResult?.columns],
@@ -58,30 +103,31 @@ export const ResultPanel = ({
     draftRows,
     columnMetadataByName,
     dirtyCellCount,
-    hasDirtyCells,
+    hasPendingChanges,
+    canInsertRows,
     isSaving,
     saveMessage,
     isCellDirty,
     getRowDeleteTarget,
+    addRow,
     updateDraftCell,
-    deleteRow,
+    deleteSelectedRows,
     saveChanges,
-  } = useResultEditing(queryResult, connectionId);
-  const { getColumnWidth, handleColumnResizeStart, resultGridStyle } =
-    useResultColumnSizing(columns, RESULT_GRID_FIXED_WIDTH);
+  } = useResultEditing(queryResult, connectionId, refreshResult);
+  const rowIds = useMemo(() => draftRows.map((row) => row.id), [draftRows]);
   const {
-    handleDeleteClick,
-    selectRow,
-    selectedDeleteTarget,
-    selectedRowIndex,
-    selectedRowLabel,
+    selectedRowIds,
+    selectedRowCount,
+    allRowsSelected,
+    toggleRow,
+    toggleAllRows,
+    clearSelection,
   } = useResultRowSelection({
-    deleteRow,
-    formatCellValue,
-    getRowDeleteTarget,
-    isDeletingDisabled: isSaving,
+    rowIds,
     queryResult,
   });
+  const { getColumnWidth, handleColumnResizeStart, resultGridStyle } =
+    useResultColumnSizing(columns, RESULT_GRID_FIXED_WIDTH);
   const resultPanelStyle = useMemo(
     () =>
       ({
@@ -94,16 +140,76 @@ export const ResultPanel = ({
       ? "save-message error"
       : "save-message";
   }, [saveMessage]);
-  const saveButtonLabel = useMemo(() => {
-    if (isSaving) {
-      return "Saving...";
-    }
+  const saveButtonLabel = isSaving
+    ? "Working..."
+    : hasPendingChanges
+      ? `Save changes (${dirtyCellCount})`
+      : "Save changes";
+  const selectedRows = useMemo(() => {
+    const selectedIdSet = new Set(selectedRowIds);
 
-    return `Save${hasDirtyCells ? ` (${dirtyCellCount})` : ""}`;
-  }, [dirtyCellCount, hasDirtyCells, isSaving]);
+    return draftRows.filter((row) => selectedIdSet.has(row.id));
+  }, [draftRows, selectedRowIds]);
+  const canDeleteSelectedRows = useMemo(() => {
+    return (
+      selectedRows.length > 0 &&
+      selectedRows.every((row) => {
+        return row.isNew || Boolean(getRowDeleteTarget(row.id));
+      })
+    );
+  }, [getRowDeleteTarget, selectedRows]);
+  const selectedTableLabel = useMemo(() => {
+    return (
+      selectedRows
+        .map((row) => getRowDeleteTarget(row.id)?.tableLabel)
+        .find(Boolean) ?? "this result"
+    );
+  }, [getRowDeleteTarget, selectedRows]);
+  const selectedRowLabel = selectedRowCount
+    ? `${selectedRowCount} row${selectedRowCount === 1 ? "" : "s"} selected`
+    : "";
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  const hasPartialSelection = selectedRowCount > 0 && !allRowsSelected;
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = hasPartialSelection;
+    }
+  }, [hasPartialSelection]);
   const handleSaveClick = useCallback((): void => {
     void saveChanges();
   }, [saveChanges]);
+  const handleAddClick = useCallback((): void => {
+    addRow();
+  }, [addRow]);
+  const handleDeleteClick = useCallback((): void => {
+    if (!canDeleteSelectedRows || isSaving) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete ${selectedRowCount} selected row${selectedRowCount === 1 ? "" : "s"} from ${selectedTableLabel}?\n\nThis cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    void deleteSelectedRows(selectedRowIds).then((deleted) => {
+      if (deleted) {
+        clearSelection();
+      }
+    });
+  }, [
+    canDeleteSelectedRows,
+    clearSelection,
+    deleteSelectedRows,
+    isSaving,
+    selectedRowCount,
+    selectedRowIds,
+    selectedTableLabel,
+  ]);
+  const hasRows = Boolean(draftRows.length);
+  const hasColumns = Boolean(columns.length);
 
   return (
     <section className="result-panel" style={resultPanelStyle}>
@@ -121,40 +227,60 @@ export const ResultPanel = ({
             {saveMessage || queryResult?.editMessage}
           </span>
 
-          <button
-            aria-label="Delete selected row"
-            className="delete-row-button"
-            type="button"
-            disabled={!selectedDeleteTarget || isSaving}
-            title={
-              selectedDeleteTarget
-                ? "Delete selected row"
-                : "Select a deletable row"
-            }
-            onClick={handleDeleteClick}
+          <div
+            className="result-action-cluster"
+            role="toolbar"
+            aria-label="Result table actions"
           >
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              viewBox="0 0 24 24"
-              width="14"
-              height="14"
-            >
-              <path
-                d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-2 6h10l-.7 12H7.7L7 9Zm3 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z"
-                fill="currentColor"
+            <label className="select-all-control" title="Select all rows">
+              <input
+                aria-checked={hasPartialSelection ? "mixed" : allRowsSelected}
+                aria-label="Select all rows"
+                checked={allRowsSelected}
+                disabled={!hasRows || isSaving}
+                ref={selectAllRef}
+                type="checkbox"
+                onChange={toggleAllRows}
               />
-            </svg>
-          </button>
+            </label>
 
-          <button
-            className="save-results-button"
-            type="button"
-            disabled={!hasDirtyCells || isSaving}
-            onClick={handleSaveClick}
-          >
-            {saveButtonLabel}
-          </button>
+            <button
+              aria-label="Add row"
+              className="result-action-button add-row-button"
+              disabled={!canInsertRows || isSaving}
+              title="Add row"
+              type="button"
+              onClick={handleAddClick}
+            >
+              <AddIcon />
+            </button>
+
+            <button
+              aria-label="Save changes"
+              className="result-action-button save-results-button"
+              disabled={!hasPendingChanges || isSaving}
+              title={saveButtonLabel}
+              type="button"
+              onClick={handleSaveClick}
+            >
+              <SaveIcon />
+            </button>
+
+            <button
+              aria-label="Delete selected rows"
+              className="result-action-button delete-row-button"
+              disabled={!canDeleteSelectedRows || isSaving}
+              title={
+                canDeleteSelectedRows
+                  ? "Delete selected rows"
+                  : "Select rows that can be safely deleted"
+              }
+              type="button"
+              onClick={handleDeleteClick}
+            >
+              <DeleteIcon />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -167,11 +293,11 @@ export const ResultPanel = ({
           <div className="query-error-message">{queryResult.message}</div>
         )}
 
-        {queryResult?.ok && !hasRows && (
+        {queryResult?.ok && !hasRows && !canInsertRows && (
           <div className="empty-result">{queryMessage}</div>
         )}
 
-        {queryResult?.ok && hasRows && hasColumns && (
+        {queryResult?.ok && hasColumns && (hasRows || canInsertRows) && (
           <table className="result-grid" style={resultGridStyle}>
             <colgroup>
               <col style={{ width: ROW_SELECTOR_COLUMN_WIDTH }} />
@@ -208,43 +334,40 @@ export const ResultPanel = ({
             </thead>
 
             <tbody>
-              {draftRows.map((row, rowIndex) => (
+              {draftRows.map((row: EditableResultRow, rowIndex) => (
                 <tr
-                  aria-selected={selectedRowIndex === rowIndex}
-                  className={
-                    selectedRowIndex === rowIndex ? "selected-row" : undefined
-                  }
-                  key={rowIndex}
-                  onClick={() => {
-                    selectRow(rowIndex);
-                  }}
+                  aria-selected={selectedRowIds.includes(row.id)}
+                  className={[
+                    selectedRowIds.includes(row.id) ? "selected-row" : "",
+                    row.isNew ? "new-row" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  key={row.id}
                 >
                   <td className="row-selector-cell">
-                    <button
+                    <input
                       aria-label={`Select row ${rowIndex + 1}`}
-                      aria-pressed={selectedRowIndex === rowIndex}
-                      className="row-selector-button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        selectRow(rowIndex);
+                      checked={selectedRowIds.includes(row.id)}
+                      className="row-selector-checkbox"
+                      type="checkbox"
+                      onChange={() => {
+                        toggleRow(row.id);
                       }}
-                    >
-                      <span className="row-selector-dot" />
-                    </button>
+                    />
                   </td>
 
                   <td>{rowIndex + 1}</td>
 
                   {columns.map((column) => {
-                    const value = row[column];
+                    const value = row.values[column];
                     const isNull = value === null || value === undefined;
                     const columnMetadata = columnMetadataByName.get(column);
                     const isBoolean =
                       columnMetadata?.dataTypeId === BOOLEAN_DATA_TYPE_ID ||
                       typeof value === "boolean";
                     const isEditable = Boolean(columnMetadata?.isEditable);
-                    const isDirty = isCellDirty(rowIndex, column);
+                    const isDirty = isCellDirty(row.id, column);
 
                     return (
                       <td
@@ -258,15 +381,13 @@ export const ResultPanel = ({
                       >
                         {isEditable && isBoolean ? (
                           <input
+                            aria-label={`${column} row ${rowIndex + 1}`}
+                            checked={Boolean(value)}
                             className="result-checkbox"
                             type="checkbox"
-                            checked={Boolean(value)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                            }}
                             onChange={(event) => {
                               updateDraftCell(
-                                rowIndex,
+                                row.id,
                                 column,
                                 event.currentTarget.checked,
                               );
@@ -274,14 +395,12 @@ export const ResultPanel = ({
                           />
                         ) : isEditable ? (
                           <input
+                            aria-label={`${column} row ${rowIndex + 1}`}
                             className="result-cell-input"
                             value={formatEditableValue(value)}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                            }}
                             onChange={(event) => {
                               updateDraftCell(
-                                rowIndex,
+                                row.id,
                                 column,
                                 event.currentTarget.value,
                               );

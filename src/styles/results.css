@@ -31,7 +31,7 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .result-tab {
@@ -77,16 +77,50 @@
   color: var(--danger);
 }
 
-.save-results-button,
-.delete-row-button {
-  height: 26px;
-  padding: 0 10px;
+.result-action-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-0) 84%, var(--surface-2));
+  box-shadow: 0 4px 12px rgba(5, 9, 16, 0.16);
+}
+
+.select-all-control,
+.result-action-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--surface-0) 88%, var(--surface-1));
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 700;
+}
+
+.select-all-control {
+  cursor: pointer;
+}
+
+.select-all-control input,
+.row-selector-checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.select-all-control input:disabled,
+.row-selector-checkbox:disabled {
+  cursor: not-allowed;
+}
+
+.result-action-button {
+  padding: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-subtle);
   cursor: pointer;
   transition:
     border-color 0.14s ease,
@@ -95,20 +129,28 @@
     opacity 0.14s ease;
 }
 
-.delete-row-button {
-  width: 30px;
-  padding: 0;
-  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
-  color: color-mix(in srgb, var(--danger) 88%, var(--text));
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.save-results-button:hover:not(:disabled),
-.delete-row-button:hover:not(:disabled) {
+.result-action-button:hover:not(:disabled),
+.select-all-control:hover {
   border-color: var(--accent);
   background: var(--surface-2);
+  color: var(--accent-hover);
+}
+
+.add-row-button:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.save-results-button:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.delete-row-button {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+  color: color-mix(in srgb, var(--danger) 88%, var(--text));
 }
 
 .delete-row-button:hover:not(:disabled) {
@@ -117,8 +159,13 @@
   color: var(--danger);
 }
 
-.save-results-button:disabled,
-.delete-row-button:disabled {
+.result-action-button:focus-visible,
+.select-all-control:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.result-action-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -213,42 +260,21 @@
 
 .row-selector-cell {
   padding: 0;
+  text-align: center;
 }
 
-.row-selector-button {
-  width: 100%;
-  height: 33px;
-  border: 0;
-  background: transparent;
-  color: var(--text-faint);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+.result-grid tbody tr.selected-row td:first-child {
+  background: color-mix(in srgb, var(--accent) 18%, var(--editor-gutter-bg));
 }
 
-.row-selector-dot {
-  width: 9px;
-  height: 9px;
-  border: 1px solid color-mix(in srgb, var(--text-faint) 72%, var(--border));
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: 0 0 0 3px transparent;
-  transition:
-    border-color 0.14s ease,
-    background 0.14s ease,
-    box-shadow 0.14s ease;
+.result-grid tbody tr.new-row {
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-0));
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.row-selector-button:hover .row-selector-dot {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-.row-selector-button[aria-pressed="true"] .row-selector-dot {
-  border-color: var(--accent);
-  background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+.result-grid tbody tr.new-row td:first-child,
+.result-grid tbody tr.new-row td:nth-child(2) {
+  background: color-mix(in srgb, var(--accent) 11%, var(--editor-gutter-bg));
 }
 
 .result-column-label {

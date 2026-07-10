@@ -3,16 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResultPanel } from "@/components/ResultPanel";
 import type { QueryRunResult } from "@electron/types/query";
 
-const updateCell = vi.fn();
-const deleteRow = vi.fn();
+const applyTableChanges = vi.fn();
 
 const installPgDeskMock = (): void => {
   Object.defineProperty(window, "pgdesk", {
     configurable: true,
     value: {
       query: {
-        updateCell,
-        deleteRow,
+        applyTableChanges,
       },
     },
   });
@@ -57,8 +55,11 @@ const queryResult: QueryRunResult = {
       isEditable: true,
     },
   ],
-  rows: [{ id: 1, name: "Jane", active: true }],
-  rowCount: 1,
+  rows: [
+    { id: 1, name: "Jane", active: true },
+    { id: 2, name: "John", active: false },
+  ],
+  rowCount: 2,
   durationMs: 2,
   command: "SELECT",
   editMessage: "Editable cells can be saved to the database.",
@@ -67,16 +68,10 @@ const queryResult: QueryRunResult = {
 describe("ResultPanel", () => {
   beforeEach(() => {
     installPgDeskMock();
-    updateCell.mockReset();
-    updateCell.mockResolvedValue({
+    applyTableChanges.mockReset();
+    applyTableChanges.mockResolvedValue({
       ok: true,
-      message: "saved",
-      rowCount: 1,
-    });
-    deleteRow.mockReset();
-    deleteRow.mockResolvedValue({
-      ok: true,
-      message: "Deleted 1 row",
+      message: "Saved 1 change",
       rowCount: 1,
     });
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -94,81 +89,138 @@ describe("ResultPanel", () => {
 
     expect(screen.getByText("No query executed yet.")).toBeInTheDocument();
     expect(screen.getByText("Result")).toBeInTheDocument();
-    expect(screen.queryByText("Messages")).not.toBeInTheDocument();
-    expect(screen.queryByText("History")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add row" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Delete selected rows" }),
+    ).toBeDisabled();
   });
 
-  it("edits text and boolean cells and saves changed values to the database", async () => {
+  it("renders icon actions and supports selecting multiple rows", () => {
     render(
       <ResultPanel
         connectionId="connection-1"
         queryResult={queryResult}
-        queryMessage="SELECT · 1 rows · 2ms"
+        queryMessage="SELECT · 2 rows · 2ms"
         panelHeight={240}
       />,
     );
 
-    fireEvent.change(screen.getByDisplayValue("Jane"), {
+    expect(screen.getByRole("button", { name: "Add row" })).toHaveAttribute(
+      "title",
+      "Add row",
+    );
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete selected rows" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select row 1" }));
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select all rows" }),
+    ).toHaveProperty("indeterminate", true);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select row 2" }));
+
+    expect(screen.getByText("2 rows selected")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete selected rows" }),
+    ).not.toBeDisabled();
+  });
+
+  it("adds a draft row and saves updates and inserts together", async () => {
+    applyTableChanges.mockResolvedValue({
+      ok: true,
+      message: "Saved 3 changes",
+      rowCount: 3,
+    });
+
+    render(
+      <ResultPanel
+        connectionId="connection-1"
+        queryResult={queryResult}
+        queryMessage="SELECT · 2 rows · 2ms"
+        panelHeight={240}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("name row 1"), {
       target: { value: "Janet" },
     });
-    fireEvent.click(screen.getByRole("checkbox"));
-    fireEvent.click(screen.getByRole("button", { name: "Save (2)" }));
+    fireEvent.change(screen.getByLabelText("name row 2"), {
+      target: { value: "Johnny" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add row" }));
+    fireEvent.change(screen.getByLabelText("name row 3"), {
+      target: { value: "Chris" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
-      expect(updateCell).toHaveBeenCalledTimes(2);
+      expect(applyTableChanges).toHaveBeenCalledTimes(1);
     });
 
-    expect(updateCell).toHaveBeenCalledWith({
+    expect(applyTableChanges).toHaveBeenCalledWith({
       connectionId: "connection-1",
       tableOid: 10,
-      columnName: "name",
-      primaryKeys: [{ columnName: "id", value: 1 }],
-      value: "Janet",
+      updates: [
+        {
+          primaryKeys: [{ columnName: "id", value: 1 }],
+          values: { name: "Janet" },
+        },
+        {
+          primaryKeys: [{ columnName: "id", value: 2 }],
+          values: { name: "Johnny" },
+        },
+      ],
+      inserts: [{ values: { name: "Chris" } }],
+      deletes: [],
     });
-    expect(updateCell).toHaveBeenCalledWith({
-      connectionId: "connection-1",
-      tableOid: 10,
-      columnName: "active",
-      primaryKeys: [{ columnName: "id", value: 1 }],
-      value: false,
-    });
-    expect(screen.getByText("Saved 2 changes")).toBeInTheDocument();
+    expect(screen.getByText("Saved 3 changes")).toBeInTheDocument();
   });
 
-  it("deletes the selected row after confirmation", async () => {
+  it("deletes all selected persisted rows with one confirmation", async () => {
+    applyTableChanges.mockResolvedValue({
+      ok: true,
+      message: "Deleted 2 rows",
+      rowCount: 2,
+    });
+
     render(
       <ResultPanel
         connectionId="connection-1"
         queryResult={queryResult}
-        queryMessage="SELECT · 1 rows · 2ms"
+        queryMessage="SELECT · 2 rows · 2ms"
         panelHeight={240}
       />,
     );
 
-    expect(screen.queryByText("1 row selected")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Select row 1" }));
-
-    expect(screen.getByText("1 row selected")).toBeInTheDocument();
-
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select row 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select row 2" }));
     fireEvent.click(
-      screen.getByRole("button", { name: "Delete selected row" }),
+      screen.getByRole("button", { name: "Delete selected rows" }),
     );
 
     await waitFor(() => {
-      expect(deleteRow).toHaveBeenCalledTimes(1);
+      expect(applyTableChanges).toHaveBeenCalledTimes(1);
     });
 
     expect(window.confirm).toHaveBeenCalledWith(
-      "Delete this row from public.users?\n\nid = 1\n\nThis cannot be undone.",
+      "Delete 2 selected rows from public.users?\n\nThis cannot be undone.",
     );
-    expect(deleteRow).toHaveBeenCalledWith({
+    expect(applyTableChanges).toHaveBeenCalledWith({
       connectionId: "connection-1",
       tableOid: 10,
-      primaryKeys: [{ columnName: "id", value: 1 }],
+      updates: [],
+      inserts: [],
+      deletes: [
+        { primaryKeys: [{ columnName: "id", value: 1 }] },
+        { primaryKeys: [{ columnName: "id", value: 2 }] },
+      ],
     });
-    expect(screen.queryByDisplayValue("Jane")).not.toBeInTheDocument();
-    expect(screen.getByText("Deleted 1 row")).toBeInTheDocument();
+    expect(screen.getByText("Deleted 2 rows")).toBeInTheDocument();
   });
 });

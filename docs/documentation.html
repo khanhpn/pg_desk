@@ -36,7 +36,7 @@
         <div class="container docs-hero-grid">
           <div>
             <div class="eyebrow-row">
-              <span class="version-pill">v0.1.36</span>
+              <span class="version-pill">v0.1.37</span>
               <span class="status-pill">User guide</span>
             </div>
             <h1>PgDesk Documentation</h1>
@@ -257,13 +257,17 @@ limit 100;</code></pre>
             <ul class="doc-list">
               <li>Text-like editable values render as inputs.</li>
               <li>Boolean editable values render as checkboxes.</li>
-              <li>Dirty cells are counted before saving.</li>
-              <li>Save writes changed values back to PostgreSQL.</li>
+              <li>Select multiple rows with the row checkboxes.</li>
+              <li>Use <strong>+</strong> to append a draft row.</li>
+              <li>Dirty cells and draft values are counted before saving.</li>
+              <li>Save writes all changed values back to PostgreSQL.</li>
+              <li>Delete removes all selected rows after one confirmation.</li>
               <li>The result panel can be resized vertically.</li>
             </ul>
             <div class="callout">
-              Editable saves require table metadata and primary key information.
-              Read-only result cells stay protected.
+              Editable saves require a base-table result with primary-key
+              metadata. The Add, Save, and Delete controls stay disabled when
+              PgDesk cannot prove that a write is safe.
             </div>
             <div class="info-grid">
               <div>
@@ -283,11 +287,21 @@ limit 100;</code></pre>
               <div>
                 <strong>Save feedback</strong>
                 <span
-                  >The result toolbar shows saved counts or database
+                  >The compact icon toolbar shows saved counts or database
                   errors.</span
                 >
               </div>
             </div>
+            <figure class="feature-screenshot">
+              <img
+                src="./assets/result-table-editing.png"
+                alt="PgDesk result table with selected rows, icon actions, and a draft row"
+              />
+              <figcaption>
+                Multi-row selection and inline editing stay in one compact,
+                keyboard-friendly action surface.
+              </figcaption>
+            </figure>
           </section>
 
           <section id="backup" class="doc-section">
@@ -436,7 +450,7 @@ pnpm run test:e2e</code></pre>
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>PgDesk v0.1.36</span>
+        <span>PgDesk v0.1.37</span>
         <a href="./index.html">Back to landing page</a>
       </div>
     </footer>

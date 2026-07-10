@@ -24,7 +24,8 @@ query results, and backing up data.
 - **Resizable workspace** — resize the left explorer and result panel to fit the
   task at hand.
 - **Editable result grid** — edit returned rows directly when PgDesk can map
-  cells back to a table primary key.
+  cells back to a table primary key, add draft rows, save multiple changes,
+  and delete selected rows in one action.
 - **Boolean cell controls** — editable boolean values render as checkboxes.
 - **Table inspector** — open table metadata and schema editing tools from the
   sidebar context menu.
@@ -38,6 +39,11 @@ query results, and backing up data.
 | Workspace                                                | Connection and editor                                           |
 | -------------------------------------------------------- | --------------------------------------------------------------- |
 | ![Clean PgDesk workspace](docs/assets/app-workspace.png) | ![PgDesk connection and SQL editor](docs/assets/screenshot.png) |
+
+![Result table editing](docs/assets/result-table-editing.png)
+
+The result-table capture shows the compact Add, Save, and Delete action group,
+multi-row selection, and a new draft row ready for input.
 
 The workspace screenshot is captured from the built Electron app with a clean
 temporary profile so project documentation does not include local connection
@@ -113,6 +119,23 @@ Current coverage includes:
 
 Pull requests into `main` run lint, Vitest, build, and Playwright E2E through
 GitHub Actions.
+
+## Editing Result Tables
+
+When a query includes the primary key and enough metadata to identify one base
+table, PgDesk turns the result into an editable data grid:
+
+- Use the checkboxes to select one or more rows.
+- Click `+` to append a draft row at the bottom of the grid.
+- Edit text, boolean, and other editable cells directly in place.
+- Click the save icon to persist all changed cells and draft rows together.
+- Click the trash icon to delete all selected persisted rows after one
+  confirmation.
+
+Computed columns, joins without a unique table identity, duplicate column
+names, and results without primary-key context remain read-only. The backend
+validates the table metadata again and applies a multi-row command in one
+transaction, so a failed change does not leave a partial update behind.
 
 ## Releases
 

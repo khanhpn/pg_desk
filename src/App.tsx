@@ -225,6 +225,7 @@ const App = () => {
           queryResult={queryResult}
           queryMessage={queryMessage}
           panelHeight={resultPanelHeight}
+          refreshResult={handleRunQuery}
         />
       </main>
 

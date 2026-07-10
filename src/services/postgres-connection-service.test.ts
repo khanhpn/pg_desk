@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { describe, expect, it, vi } from "vitest";
-import { deletePostgresRowFromPool } from "@electron/services/postgres-connection-service";
+import {
+  applyPostgresTableChangesFromPool,
+  deletePostgresRowFromPool,
+} from "@electron/services/postgres-connection-service";
 
 describe("deletePostgresRowFromPool", () => {
   it("deletes a row by primary key using bound values", async () => {
@@ -102,5 +105,130 @@ describe("deletePostgresRowFromPool", () => {
       rowCount: 0,
     });
     expect(query).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("applyPostgresTableChangesFromPool", () => {
+  it("applies updates, inserts, and deletes in one parameterized transaction", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            schema_name: "public",
+            table_name: "users",
+            column_name: "id",
+            is_primary_key: true,
+          },
+          {
+            schema_name: "public",
+            table_name: "users",
+            column_name: "display name",
+            is_primary_key: false,
+          },
+          {
+            schema_name: "public",
+            table_name: "users",
+            column_name: "active",
+            is_primary_key: false,
+          },
+        ],
+      })
+      .mockResolvedValue({ rowCount: 1 });
+    const client = { query: clientQuery, release: vi.fn() };
+    const pool = { connect: vi.fn().mockResolvedValue(client) };
+
+    const result = await applyPostgresTableChangesFromPool(pool as never, {
+      connectionId: "connection-1",
+      tableOid: 10,
+      updates: [
+        {
+          primaryKeys: [{ columnName: "id", value: 1 }],
+          values: { "display name": "Janet", active: false },
+        },
+      ],
+      inserts: [{ values: { "display name": "Chris", active: true } }],
+      deletes: [
+        {
+          primaryKeys: [{ columnName: "id", value: 2 }],
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      message: "Saved 3 changes",
+      rowCount: 3,
+    });
+    expect(pool.connect).toHaveBeenCalledTimes(1);
+    expect(clientQuery).toHaveBeenNthCalledWith(2, "begin");
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('update "public"."users"'),
+      ["Janet", false, 1],
+    );
+    expect(clientQuery.mock.calls[2][0]).toContain('"display name" = $1');
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('insert into "public"."users"'),
+      ["Chris", true],
+    );
+    expect(clientQuery).toHaveBeenNthCalledWith(
+      5,
+      expect.stringContaining('delete from "public"."users"'),
+      [2],
+    );
+    expect(clientQuery).toHaveBeenNthCalledWith(6, "commit");
+    expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("rolls back when a requested row is no longer available", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            schema_name: "public",
+            table_name: "users",
+            column_name: "id",
+            is_primary_key: true,
+          },
+          {
+            schema_name: "public",
+            table_name: "users",
+            column_name: "name",
+            is_primary_key: false,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: null })
+      .mockResolvedValueOnce({ rowCount: 0 })
+      .mockResolvedValueOnce({ rowCount: null });
+    const client = { query: clientQuery, release: vi.fn() };
+    const pool = { connect: vi.fn().mockResolvedValue(client) };
+
+    const result = await applyPostgresTableChangesFromPool(pool as never, {
+      connectionId: "connection-1",
+      tableOid: 10,
+      updates: [
+        {
+          primaryKeys: [{ columnName: "id", value: 99 }],
+          values: { name: "Missing" },
+        },
+      ],
+      inserts: [],
+      deletes: [],
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      message: "No row was updated. The row may have changed.",
+      rowCount: 0,
+    });
+    expect(clientQuery).toHaveBeenNthCalledWith(4, "rollback");
+    expect(clientQuery.mock.calls.some(([sql]) => sql === "commit")).toBe(
+      false,
+    );
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });
