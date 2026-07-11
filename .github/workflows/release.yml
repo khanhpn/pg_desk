@@ -2,16 +2,54 @@ name: Release pgdesk
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    branches:
+      - main
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pgdesk-main-release-and-pages
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Prepare release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      should_release: ${{ steps.release.outputs.should_release }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Read package version and check tag
+        id: release
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "Release tag $TAG already exists; desktop release will be skipped."
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Release tag $TAG does not exist; desktop release will be built."
+          fi
+
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
 
     steps:
       - name: Checkout source
@@ -75,10 +113,13 @@ jobs:
             dist-release/*.zip.blockmap
             dist-release/latest-mac.yml
           if-no-files-found: error
+          retention-days: 1
 
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
 
     steps:
       - name: Checkout source
@@ -116,13 +157,16 @@ jobs:
             dist-release/*.exe.blockmap
             dist-release/latest.yml
           if-no-files-found: error
+          retention-days: 1
 
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs:
+      - prepare
       - build-macos
       - build-windows
+    if: needs.prepare.outputs.should_release == 'true'
 
     steps:
       - name: Checkout source
@@ -139,20 +183,56 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
           REPO: ${{ github.repository }}
         run: |
-          if gh release view "$TAG_NAME" --repo "$REPO" >/dev/null 2>&1; then
-            echo "Release $TAG_NAME already exists. Uploading assets..."
-            gh release upload "$TAG_NAME" \
-              release-assets/**/* \
-              --repo "$REPO" \
-              --clobber
-          else
-            echo "Release $TAG_NAME does not exist. Creating release..."
-            gh release create "$TAG_NAME" \
-              release-assets/**/* \
-              --repo "$REPO" \
-              --title "pgdesk $TAG_NAME" \
-              --generate-notes
+          gh release create "$TAG_NAME" \
+            release-assets/**/* \
+            --repo "$REPO" \
+            --target "$TARGET_SHA" \
+            --title "pgdesk $TAG_NAME" \
+            --generate-notes
+
+          ASSET_COUNT="$(gh release view "$TAG_NAME" --repo "$REPO" --json assets --jq '.assets | length')"
+          if [ "$ASSET_COUNT" -eq 0 ]; then
+            echo "Release $TAG_NAME has no uploaded assets; refusing to clean older releases."
+            exit 1
           fi
+
+          gh api --paginate "repos/$REPO/releases?per_page=100" \
+            --jq ".[] | select(.tag_name != \"$TAG_NAME\") | .tag_name as \$tag | .assets[] | [.id, .name, \$tag] | @tsv" |
+          while IFS=$'\t' read -r ASSET_ID ASSET_NAME RELEASE_TAG; do
+            [ -n "$ASSET_ID" ] || continue
+            echo "Deleting asset $ASSET_NAME from $RELEASE_TAG"
+            gh api --method DELETE "repos/$REPO/releases/assets/$ASSET_ID"
+          done
+
+  build-pages:
+    name: Build GitHub Pages artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload documentation
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+  deploy-pages:
+    name: Deploy GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
