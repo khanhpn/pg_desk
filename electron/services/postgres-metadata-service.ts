@@ -107,6 +107,13 @@ const getDefaultExpression = (defaultExpression: string): string => {
   return trimmedExpression;
 };
 
+/**
+ * Converts a validated table-inspector change into one PostgreSQL DDL statement.
+ *
+ * @param payload - Discriminated schema-change request from the renderer.
+ * @returns SQL targeting the quoted schema, table, and column identifiers.
+ * @throws When a data type or default expression violates the supported safety rules.
+ */
 export const buildTableChangeSql = (payload: PgTableChangePayload): string => {
   const qualifiedTableName = getQualifiedTableName(
     payload.schema,
@@ -150,6 +157,12 @@ export const buildTableChangeSql = (payload: PgTableChangePayload): string => {
   )};`;
 };
 
+/**
+ * Loads user-visible schemas and relations for a connected PostgreSQL pool.
+ *
+ * @param connectionId - Connection whose catalog should be queried.
+ * @returns Grouped schema metadata suitable for the renderer explorer.
+ */
 export const getPostgresExplorer = async (
   connectionId?: string | null,
 ): Promise<PgDatabaseExplorerResult> => {
@@ -229,6 +242,14 @@ export const getPostgresExplorer = async (
   }
 };
 
+/**
+ * Loads columns, foreign keys, and indexes for one PostgreSQL table.
+ *
+ * @param connectionId - Connection that owns the table.
+ * @param schema - Table schema name.
+ * @param table - Table name.
+ * @returns Structured table metadata or a failure result.
+ */
 export const getPostgresTableDetail = async (
   schema: string,
   table: string,
@@ -403,6 +424,13 @@ export const getPostgresTableDetail = async (
   }
 };
 
+/**
+ * Applies one table-inspector DDL operation to the selected connection.
+ *
+ * @param connectionId - Connection on which to execute the change.
+ * @param payload - Validated schema-change request.
+ * @returns Operation status and the SQL that was executed.
+ */
 export const applyPostgresTableChange = async (
   payload: PgTableChangePayload,
   connectionId?: string | null,

@@ -7,6 +7,14 @@ type TableInspectorMenuState = {
   y: number;
 };
 
+/**
+ * Coordinates table context-menu state and schema inspection for the selected
+ * PostgreSQL relation.
+ *
+ * @param connectionId - Connection used for metadata requests and schema changes.
+ * @returns Context-menu, drawer, metadata, refresh, and mutation commands for the
+ * table inspector UI.
+ */
 export const useTableInspector = (connectionId: string | null) => {
   const [contextMenu, setContextMenu] =
     useState<TableInspectorMenuState | null>(null);

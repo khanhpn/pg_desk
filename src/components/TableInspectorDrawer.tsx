@@ -101,6 +101,12 @@ const buildPreviewSql = (payload: PgTableChangePayload | null): string => {
   )};`;
 };
 
+/**
+ * Renders table metadata and schema-edit controls in a side drawer.
+ *
+ * @param props - Selected relation metadata, loading state, and schema mutation actions.
+ * @returns The table inspector drawer, or `null` when no table is selected.
+ */
 export const TableInspectorDrawer = ({
   relation,
   connectionId,

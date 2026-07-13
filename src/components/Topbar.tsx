@@ -5,10 +5,16 @@ type TopbarProps = {
   activeTabId: string;
   canCreateTab: boolean;
   createTab: () => void;
-  selectTab: (tabId: string) => void;
+  selectTab: (tabId: string) => void | Promise<void>;
   closeTab: (tabId: string) => void;
 };
 
+/**
+ * Renders query tabs and exposes tab creation, activation, and close actions.
+ *
+ * @param props - Query-tab state and callbacks supplied by the query workspace.
+ * @returns The query workspace tab strip.
+ */
 export const Topbar = ({
   tabs,
   activeTabId,
@@ -31,7 +37,7 @@ export const Topbar = ({
                 aria-selected={isActive}
                 className="tab-main"
                 onClick={() => {
-                  selectTab(tab.id);
+                  void selectTab(tab.id);
                 }}
                 role="tab"
                 type="button"

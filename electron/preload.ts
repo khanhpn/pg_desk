@@ -310,6 +310,10 @@ type UpdateStatusPayload = {
   isManual?: boolean;
 };
 
+/**
+ * Typed renderer API that delegates privileged operations to main-process IPC.
+ * The object is exposed as `window.pgdesk` through Electron's context bridge.
+ */
 const pgdeskApi = {
   app: {
     ping: (): Promise<{

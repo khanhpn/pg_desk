@@ -6,6 +6,13 @@ type OpenRelationHandler = (
   relationName: string,
 ) => Promise<void>;
 
+/**
+ * Tracks the selected explorer relation and opens it in the query workspace.
+ *
+ * @param activeConnectionId - Connection that owns the explorer selection.
+ * @param handleOpenRelation - Async command used to generate and run relation SQL.
+ * @returns The selected relation key and a relation-selection handler.
+ */
 export const useRelationSelection = (
   activeConnectionId: string | null,
   handleOpenRelation: OpenRelationHandler,

@@ -14,6 +14,14 @@ const manualVisibleStatuses = new Set<UpdateStatusPayload["status"]>([
   "not-available",
 ]);
 
+/**
+ * Coordinates renderer state for the Electron auto-update lifecycle.
+ *
+ * @returns Update status, toast visibility, and commands for downloading,
+ * installing, or dismissing an available update.
+ * @remarks Subscribes to update events exposed by the preload bridge and
+ * removes the subscription when the component using the hook unmounts.
+ */
 export const useAppUpdate = () => {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload | null>(
     null,

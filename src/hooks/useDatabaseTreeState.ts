@@ -6,6 +6,11 @@ const buildGroupKey = (schemaName: string, group: RelationGroup): string => {
   return `${schemaName}.${group}`;
 };
 
+/**
+ * Owns expanded and collapsed state for schemas and relation groups.
+ *
+ * @returns Collapse predicates and toggle commands keyed by schema and group.
+ */
 export const useDatabaseTreeState = () => {
   const [collapsedSchemas, setCollapsedSchemas] = useState<Set<string>>(
     () => new Set(),

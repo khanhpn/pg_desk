@@ -13,6 +13,12 @@ type ConnectionModalProps = {
   handleConnect: () => Promise<void>;
 };
 
+/**
+ * Renders the modal form used to create or edit a connection profile.
+ *
+ * @param props - Form values, field setters, modal state, and connection actions.
+ * @returns The connection form dialog, or `null` while the dialog is closed.
+ */
 export const ConnectionModal = ({
   isOpen,
   connectionForm,

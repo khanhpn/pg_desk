@@ -15,6 +15,13 @@ const getDefaultColumnWidth = (column: string): number => {
   );
 };
 
+/**
+ * Calculates and mutates result-grid column widths within supported bounds.
+ *
+ * @param columns - Ordered result column names.
+ * @param fixedWidth - Width reserved by non-data columns in the result grid.
+ * @returns Width lookup values, total table width, and a resize-start handler.
+ */
 export const useResultColumnSizing = (
   columns: string[],
   fixedWidth: number,

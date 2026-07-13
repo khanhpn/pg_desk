@@ -140,6 +140,14 @@ const escapeRegExp = (value: string): string => {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
+/**
+ * Builds a filesystem-safe, versioned SQL backup filename.
+ *
+ * @param databaseName - Source database name.
+ * @param version - Daily sequence number for the backup.
+ * @param dateLabel - Date segment included in the filename.
+ * @returns A sanitized `.sql` filename.
+ */
 export const buildSqlBackupFileName = (
   databaseName: string,
   version: number,
@@ -194,6 +202,13 @@ const getDefaultBackupPath = async (
   return path.join(documentsPath, fileName);
 };
 
+/**
+ * Chooses the next non-conflicting backup path for a database in a folder.
+ *
+ * @param folderPath - Destination directory.
+ * @param databaseName - Database being backed up.
+ * @returns An absolute versioned SQL file path.
+ */
 export const buildMultiDatabaseBackupFilePath = async (
   folderPath: string,
   databaseName: string,
@@ -209,6 +224,12 @@ export const buildMultiDatabaseBackupFilePath = async (
   return path.join(folderPath, fileName);
 };
 
+/**
+ * Removes templates, system databases, and databases that reject connections.
+ *
+ * @param rows - Raw `pg_database` catalog rows.
+ * @returns User-manageable database summaries.
+ */
 export const filterConnectableDatabases = (
   rows: PgDatabaseRow[],
 ): PgDatabaseSummary[] => {
@@ -283,6 +304,13 @@ const recordDatabaseMaintenanceAuditEvent = async (
   }
 };
 
+/**
+ * Checks whether a database name exists in the server catalog.
+ *
+ * @param client - Query-capable server connection.
+ * @param databaseName - Exact database name to find.
+ * @returns `true` when the catalog contains the database.
+ */
 export const databaseExists = async (
   client: QueryableDatabaseClient,
   databaseName: string,
@@ -366,6 +394,13 @@ export const getCreateDatabaseSql = (databaseName: string): string => {
   return `create database ${quoteIdentifier(databaseName)}`;
 };
 
+/**
+ * Creates a database only when it is absent from the server catalog.
+ *
+ * @param client - Query-capable server connection.
+ * @param databaseName - Database to verify or create.
+ * @returns A promise that resolves once the database exists.
+ */
 export const createDatabaseIfMissing = async (
   client: QueryableDatabaseClient,
   databaseName: string,
@@ -703,6 +738,14 @@ const scanSqlRestoreLine = (
   }
 };
 
+/**
+ * Rejects SQL backups containing commands that can affect another database.
+ *
+ * @param sql - Plain SQL backup content to inspect.
+ * @param targetDatabase - Optional database name permitted by wrapper commands.
+ * @returns Nothing when the SQL stays within the allowed database scope.
+ * @throws When server-level or cross-database SQL is detected.
+ */
 export const assertDatabaseScopedSqlRestore = (
   sql: string,
   targetDatabase?: string,
@@ -714,6 +757,13 @@ export const assertDatabaseScopedSqlRestore = (
   }
 };
 
+/**
+ * Validates restore SQL and removes harmless database wrapper commands.
+ *
+ * @param sql - Plain SQL backup content.
+ * @param targetDatabase - Sole database the restore may target.
+ * @returns SQL constrained for execution against the target connection.
+ */
 export const toDatabaseScopedSqlRestore = (
   sql: string,
   targetDatabase: string,
@@ -767,6 +817,14 @@ const writePgRestoreInlineDataCopy = async (
   return true;
 };
 
+/**
+ * Streams a backup into a private temporary file after enforcing database scope.
+ *
+ * @param filePath - Source SQL backup path.
+ * @param targetDatabase - Database that the restore may modify.
+ * @returns Path to the generated temporary SQL file.
+ * @throws When unsafe SQL or unreadable inline restore data is encountered.
+ */
 export const createDatabaseScopedSqlRestoreFile = async (
   filePath: string,
   targetDatabase: string,
@@ -966,6 +1024,14 @@ const watchStream = (
     });
 };
 
+/**
+ * Runs a PostgreSQL command-line tool and safely coordinates optional file streams.
+ *
+ * @param command - Executable path or command name.
+ * @param args - Ordered process arguments.
+ * @param options - Environment overrides and optional stdin/stdout file paths.
+ * @returns Exit code, signal, stderr output, and stream errors.
+ */
 export const runCommand = async (
   command: string,
   args: string[],
@@ -1285,6 +1351,13 @@ const runPostgresTool = async (
   assertCommandSucceeded(result, `${toolName} failed.`);
 };
 
+/**
+ * Prompts for a destination and creates a plain SQL backup of one database.
+ *
+ * @param parentWindow - Window that owns the native save dialog.
+ * @param connectionId - Explicit source connection, or the active connection.
+ * @returns Backup status, message, and output path when successful.
+ */
 export const backupPostgresDatabase = async (
   parentWindow: BrowserWindow | null,
   connectionId?: string | null,
@@ -1366,6 +1439,13 @@ export const backupPostgresDatabase = async (
   }
 };
 
+/**
+ * Prompts for a backup and restores it into one existing database.
+ *
+ * @param parentWindow - Window that owns the native open dialog.
+ * @param connectionId - Explicit target connection, or the active connection.
+ * @returns Restore status and a user-presentable message.
+ */
 export const restorePostgresDatabase = async (
   parentWindow: BrowserWindow | null,
   connectionId?: string | null,
@@ -1474,6 +1554,12 @@ export const restorePostgresDatabase = async (
   }
 };
 
+/**
+ * Lists connectable non-system databases visible to a connection.
+ *
+ * @param connectionId - Explicit server connection, or the active connection.
+ * @returns Database summaries or a normalized failure response.
+ */
 export const listPostgresDatabases = async (
   connectionId?: string | null,
 ): Promise<PgDatabaseListResult> => {
@@ -1506,6 +1592,12 @@ export const listPostgresDatabases = async (
   }
 };
 
+/**
+ * Opens the native directory picker used by multi-database backup.
+ *
+ * @param parentWindow - Window that owns the picker.
+ * @returns Selection status and the chosen folder path.
+ */
 export const choosePostgresBackupFolder = async (
   parentWindow: BrowserWindow | null,
 ): Promise<PgBackupFolderSelectionResult> => {
@@ -1528,6 +1620,12 @@ export const choosePostgresBackupFolder = async (
   };
 };
 
+/**
+ * Opens a native picker and expands selected restore files or directories.
+ *
+ * @param parentWindow - Window that owns the picker.
+ * @returns Normalized SQL backup entries inferred from the selection.
+ */
 export const choosePostgresRestoreFiles = async (
   parentWindow: BrowserWindow | null,
 ): Promise<PgRestoreFileSelectionResult> => {
@@ -1594,6 +1692,12 @@ export const choosePostgresRestoreFiles = async (
   }
 };
 
+/**
+ * Backs up selected databases sequentially and audits inventory changes.
+ *
+ * @param payload - Source connection, database names, and destination folder.
+ * @returns Aggregate status and one result item per selected database.
+ */
 export const backupPostgresDatabases = async (
   payload: PgMultiDatabaseBackupPayload,
 ): Promise<PgMultiDatabaseBackupResult> => {
@@ -1754,6 +1858,12 @@ export const backupPostgresDatabases = async (
   }
 };
 
+/**
+ * Creates missing targets and restores multiple scoped SQL backups sequentially.
+ *
+ * @param payload - Server connection and source-file/target-database mappings.
+ * @returns Aggregate status and one result item per restore entry.
+ */
 export const restorePostgresDatabases = async (
   payload: PgMultiDatabaseRestorePayload,
 ): Promise<PgMultiDatabaseRestoreResult> => {

@@ -76,6 +76,12 @@ const pgdeskEditorLayout = EditorView.theme(
   },
 );
 
+/**
+ * Renders the CodeMirror SQL editor and reports text and selection changes.
+ *
+ * @param props - SQL text, mutation callbacks, and keyboard-triggered commands.
+ * @returns The configured SQL editor surface.
+ */
 export const SqlEditor = ({
   sql,
   setSql,

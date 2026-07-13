@@ -45,6 +45,12 @@ type SidebarProps = {
   ) => void;
 };
 
+/**
+ * Composes connection, explorer, modal, and maintenance controls in the sidebar.
+ *
+ * @param props - Connection workflow, explorer, and database maintenance properties.
+ * @returns The complete application sidebar.
+ */
 export const Sidebar = ({
   sidebarWidth,
   connectionForm,

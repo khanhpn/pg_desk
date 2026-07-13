@@ -16,6 +16,7 @@ import type {
   QueryTableChangePayload,
 } from "@electron/types/query";
 
+/** Registers query execution, cancellation, explain, and mutation IPC handlers. @returns Nothing. */
 export const registerQueryIpc = (): void => {
   ipcMain.handle("query:run", async (_event, payload: QueryRunPayload) => {
     return runPostgresQuery(payload);

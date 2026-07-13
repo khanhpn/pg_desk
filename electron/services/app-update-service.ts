@@ -31,6 +31,12 @@ const sendUpdateStatus = (payload: UpdateStatusPayload): void => {
   mainWindow?.webContents.send("update:status", payload);
 };
 
+/**
+ * Selects platform-appropriate arguments for Electron's quit-and-install call.
+ *
+ * @param platform - Node platform identifier for the running application.
+ * @returns The `isSilent` and `isForceRunAfter` installation flags.
+ */
 export const getQuitAndInstallOptions = (
   platform: NodeJS.Platform = process.platform,
 ): [] | [boolean, boolean] => {
@@ -48,6 +54,12 @@ const formatUpdateErrorMessage = (error: Error): string => {
   return error.message || "Update failed";
 };
 
+/**
+ * Configures the updater and forwards updater lifecycle events to the renderer.
+ *
+ * @param window - Browser window that receives update status messages.
+ * @returns Nothing; registration is completed synchronously.
+ */
 export const registerAppUpdater = (window: BrowserWindow): void => {
   mainWindow = window;
 
@@ -116,6 +128,12 @@ export const registerAppUpdater = (window: BrowserWindow): void => {
   });
 };
 
+/**
+ * Requests an update check for the running packaged application.
+ *
+ * @param isManual - Whether renderer feedback should indicate a user-triggered check.
+ * @returns A promise that resolves after the check request completes.
+ */
 export const checkForAppUpdates = async (isManual = false): Promise<void> => {
   isManualUpdateCheck = isManual;
 
@@ -135,10 +153,16 @@ export const checkForAppUpdates = async (isManual = false): Promise<void> => {
   await getAutoUpdater().checkForUpdates();
 };
 
+/** @returns A promise that resolves after the available update download completes. */
 export const downloadAppUpdate = async (): Promise<void> => {
   await getAutoUpdater().downloadUpdate();
 };
 
+/**
+ * Quits the application and starts installation of the downloaded update.
+ *
+ * @returns A promise that resolves if the quit-and-install request returns.
+ */
 export const installAppUpdate = async (): Promise<void> => {
   sendUpdateStatus({
     status: "installing",

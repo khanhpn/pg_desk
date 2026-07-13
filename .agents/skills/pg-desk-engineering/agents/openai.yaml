@@ -1,0 +1,4 @@
+interface:
+  display_name: "PgDesk Engineering"
+  short_description: "Apply PgDesk architecture and quality conventions"
+  default_prompt: "Use the PgDesk engineering conventions while implementing or reviewing this change."

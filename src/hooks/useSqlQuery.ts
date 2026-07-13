@@ -6,6 +6,7 @@ import type { QueryRunResult } from "@electron/types/query";
 
 export type QueryTab = {
   id: string;
+  connectionId: string | null;
   title: string;
   sql: string;
   savedSql: string | null;
@@ -17,6 +18,7 @@ export type QueryTab = {
 
 type PersistedQueryTab = {
   id: string;
+  connectionId?: string | null;
   title: string;
   sql: string;
 };
@@ -34,8 +36,13 @@ const defaultSql = `select
   current_user as user,
   now() as current_time;`;
 
-const createQueryTab = (index: number, sql = defaultSql): QueryTab => ({
+const createQueryTab = (
+  index: number,
+  sql = defaultSql,
+  connectionId: string | null = null,
+): QueryTab => ({
   id: `query-${index}`,
+  connectionId,
   title: `Query ${index}`,
   sql,
   savedSql: sql,
@@ -45,8 +52,12 @@ const createQueryTab = (index: number, sql = defaultSql): QueryTab => ({
   isRunningQuery: false,
 });
 
-const createUnsavedQueryTab = (index: number): QueryTab => ({
+const createUnsavedQueryTab = (
+  index: number,
+  connectionId: string | null,
+): QueryTab => ({
   id: `query-${index}`,
+  connectionId,
   title: `Query ${index}`,
   sql: "",
   savedSql: null,
@@ -95,6 +106,7 @@ const writePersistedWorkspace = (
   const workspace: PersistedQueryWorkspace = {
     tabs: tabs.map((tab) => ({
       id: tab.id,
+      connectionId: tab.connectionId,
       title: tab.title,
       sql: tab.savedSql ?? "",
     })),
@@ -108,17 +120,23 @@ const writePersistedWorkspace = (
   );
 };
 
-const createInitialQueryWorkspaceState = (): {
+const createInitialQueryWorkspaceState = (
+  connectionId: string | null,
+): {
   tabs: QueryTab[];
   activeTabId: string;
   nextTabIndex: number;
 } => {
   const persistedWorkspace = readPersistedWorkspace();
   const tabs = persistedWorkspace?.tabs.map((tab) => ({
-    ...createQueryTab(Number(tab.id.split("-")[1]) || 1, tab.sql),
+    ...createQueryTab(
+      Number(tab.id.split("-")[1]) || 1,
+      tab.sql,
+      tab.connectionId ?? connectionId,
+    ),
     id: tab.id,
     title: tab.title,
-  })) ?? [createQueryTab(1)];
+  })) ?? [createQueryTab(1, defaultSql, connectionId)];
   const activeTabId = tabs.some(
     (tab) => tab.id === persistedWorkspace?.activeTabId,
   )
@@ -136,8 +154,21 @@ const createInitialQueryWorkspaceState = (): {
   };
 };
 
+/**
+ * Owns the SQL query workspace, including tab persistence, editor state, query
+ * execution, cancellation, formatting, and explain operations.
+ *
+ * @param connectionId - Active connection used by query operations and captured
+ * as the initial context for newly created tabs.
+ * @returns Query-tab state and commands consumed by the editor, toolbar, and
+ * result panel.
+ * @remarks Saved tab content and connection context are persisted to local
+ * storage. Query requests are sent through the Electron preload bridge.
+ */
 export const useSqlQuery = (connectionId: string | null) => {
-  const [initialWorkspace] = useState(createInitialQueryWorkspaceState);
+  const [initialWorkspace] = useState(() =>
+    createInitialQueryWorkspaceState(connectionId),
+  );
   const nextTabIndexRef = useRef(initialWorkspace.nextTabIndex);
   const activeRunIdRef = useRef<string | null>(null);
   const [tabs, setTabs] = useState<QueryTab[]>(initialWorkspace.tabs);
@@ -197,11 +228,21 @@ export const useSqlQuery = (connectionId: string | null) => {
     const nextIndex = nextTabIndexRef.current;
     nextTabIndexRef.current += 1;
 
-    const nextTab = createUnsavedQueryTab(nextIndex);
+    const nextTab = createUnsavedQueryTab(nextIndex, connectionId);
 
     setTabs((currentTabs) => [...currentTabs, nextTab]);
     setActiveTabId(nextTab.id);
-  }, []);
+  }, [connectionId]);
+
+  const setTabConnection = useCallback(
+    (tabId: string, nextConnectionId: string | null): void => {
+      updateTab(tabId, (tab) => ({
+        ...tab,
+        connectionId: nextConnectionId,
+      }));
+    },
+    [updateTab],
+  );
 
   const selectTab = useCallback((tabId: string): void => {
     setActiveTabId(tabId);
@@ -431,6 +472,7 @@ export const useSqlQuery = (connectionId: string | null) => {
     selectLimit,
     setSelectLimit,
     createTab,
+    setTabConnection,
     selectTab,
     closeTab,
     saveActiveTab,

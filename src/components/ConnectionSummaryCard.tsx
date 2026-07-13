@@ -17,6 +17,12 @@ type ConnectionSummaryCardProps = {
   handleRestoreDatabase: (connectionId: string) => Promise<void>;
 };
 
+/**
+ * Displays a saved connection profile and its available lifecycle actions.
+ *
+ * @param props - Profile data, active/connected state, and profile action callbacks.
+ * @returns A connection summary card suitable for the sidebar profile list.
+ */
 export const ConnectionSummaryCard = ({
   connectionProfiles,
   activeConnectionId,

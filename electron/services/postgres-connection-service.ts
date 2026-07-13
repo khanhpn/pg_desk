@@ -111,10 +111,17 @@ type ExplainResultRow = {
   }>;
 };
 
+/** @returns The identifier of the connection currently selected by the main process. */
 export const getActiveConnectionId = (): string | null => {
   return activeConnectionId;
 };
 
+/**
+ * Resolves a connected pool by identifier, falling back to the active connection.
+ *
+ * @param connectionId - Optional explicit connection identifier.
+ * @returns The connected pool, or `null` when the requested connection is unavailable.
+ */
 export const getActivePostgresPool = (
   connectionId?: string | null,
 ): PgPool | null => {
@@ -408,6 +415,12 @@ const getConnectionInfo = async (
   };
 };
 
+/**
+ * Validates settings by opening and closing a temporary PostgreSQL pool.
+ *
+ * @param config - Unpersisted connection settings to test.
+ * @returns A success result with server information or a normalized error message.
+ */
 export const testPostgresConnection = async (
   config: PgConnectionConfig,
 ): Promise<PgConnectionTestResult> => {
@@ -434,6 +447,12 @@ export const testPostgresConnection = async (
   }
 };
 
+/**
+ * Connects a profile, persists it, and makes it the active connection.
+ *
+ * @param config - Connection profile settings supplied by the renderer.
+ * @returns Connection status and the stable saved profile identifier.
+ */
 export const connectPostgres = async (
   config: PgConnectionConfig,
 ): Promise<PgConnectionTestResult> => {
@@ -472,6 +491,7 @@ export const connectPostgres = async (
   }
 };
 
+/** @returns Saved profiles, active profile, and identifiers of connected pools. */
 export const listPostgresConnections =
   async (): Promise<PgConnectionListResult> => {
     const profileList = await loadConnectionProfiles();
@@ -490,6 +510,12 @@ export const listPostgresConnections =
     };
   };
 
+/**
+ * Makes an existing saved profile the active query context.
+ *
+ * @param connectionId - Saved profile identifier to activate.
+ * @returns A promise that resolves after active state is persisted.
+ */
 export const setActivePostgresConnection = async (
   connectionId: string,
 ): Promise<void> => {
@@ -497,6 +523,12 @@ export const setActivePostgresConnection = async (
   activeConnectionId = connectionId;
 };
 
+/**
+ * Disconnects and removes a saved PostgreSQL profile.
+ *
+ * @param connectionId - Profile identifier to delete.
+ * @returns A promise that resolves after memory and disk state are updated.
+ */
 export const deletePostgresConnectionProfile = async (
   connectionId: string,
 ): Promise<void> => {
@@ -509,6 +541,12 @@ export const deletePostgresConnectionProfile = async (
   }
 };
 
+/**
+ * Closes a connected pool without deleting its saved profile.
+ *
+ * @param connectionId - Explicit pool identifier, or the active pool when omitted.
+ * @returns A promise that resolves after the pool is closed.
+ */
 export const disconnectPostgres = async (
   connectionId?: string | null,
 ): Promise<void> => {
@@ -528,6 +566,12 @@ export const disconnectPostgres = async (
   poolsByConnectionId.delete(targetConnectionId);
 };
 
+/**
+ * Executes SQL on a connected pool and normalizes rows and column metadata.
+ *
+ * @param payload - SQL text, optional connection identifier, and cancellation ID.
+ * @returns Query rows, metadata, timing, command, and success status.
+ */
 export const runPostgresQuery = async ({
   connectionId,
   requestId,
@@ -612,6 +656,12 @@ export const runPostgresQuery = async ({
   }
 };
 
+/**
+ * Cancels a tracked query using a dedicated PostgreSQL control connection.
+ *
+ * @param payload - Connection and request identifiers for the running query.
+ * @returns Cancellation status and a user-presentable message.
+ */
 export const cancelPostgresQuery = async ({
   connectionId,
   requestId,
@@ -660,6 +710,12 @@ export const cancelPostgresQuery = async ({
   }
 };
 
+/**
+ * Executes JSON EXPLAIN for SQL and flattens the plan for tabular rendering.
+ *
+ * @param payload - SQL text and optional connection identifier.
+ * @returns Flattened plan rows and query timing metadata.
+ */
 export const explainPostgresQuery = async ({
   connectionId,
   sql,
@@ -731,6 +787,12 @@ export const explainPostgresQuery = async ({
   }
 };
 
+/**
+ * Updates one table cell using primary-key values as the row identity guard.
+ *
+ * @param payload - Table identity, target column/value, and primary-key values.
+ * @returns Mutation status and affected-row count.
+ */
 export const updatePostgresCell = async ({
   connectionId,
   tableOid,
@@ -861,6 +923,13 @@ export const updatePostgresCell = async ({
   }
 };
 
+/**
+ * Deletes one row from a supplied pool using all provided identity values.
+ *
+ * @param pool - Connected pool used for the delete statement.
+ * @param payload - Table identity and primary-key values selecting the row.
+ * @returns Mutation status and affected-row count.
+ */
 export const deletePostgresRowFromPool = async (
   pool: PgPool,
   { tableOid, primaryKeys }: QueryRowDeletePayload,
@@ -1032,6 +1101,14 @@ const validateTableChangeColumns = (
   return entries;
 };
 
+/**
+ * Applies inserts, updates, and deletes atomically to one PostgreSQL table.
+ *
+ * @param pool - Connected pool used to acquire the transaction client.
+ * @param payload - Table identity, column metadata, and requested row changes.
+ * @returns Counts of inserted, updated, and deleted rows after commit.
+ * @throws When validation fails, a target row is stale, or the transaction fails.
+ */
 export const applyPostgresTableChangesFromPool = async (
   pool: PgPool,
   { tableOid, updates, inserts, deletes }: QueryTableChangePayload,
@@ -1211,6 +1288,12 @@ export const applyPostgresTableChangesFromPool = async (
   }
 };
 
+/**
+ * Resolves a connection and applies a batch of editable-result row changes.
+ *
+ * @param payload - Connection context and table changes from the renderer.
+ * @returns Transaction result or a normalized failure response.
+ */
 export const applyPostgresTableChanges = async (
   payload: QueryTableChangePayload,
 ): Promise<QueryTableChangeResult> => {
@@ -1227,6 +1310,12 @@ export const applyPostgresTableChanges = async (
   return applyPostgresTableChangesFromPool(pool, payload);
 };
 
+/**
+ * Resolves a connection and deletes one identified PostgreSQL row.
+ *
+ * @param payload - Connection, table, and primary-key identity values.
+ * @returns Delete status or a normalized failure response.
+ */
 export const deletePostgresRow = async (
   payload: QueryRowDeletePayload,
 ): Promise<QueryRowDeleteResult> => {

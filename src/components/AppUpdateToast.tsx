@@ -9,6 +9,12 @@ type AppUpdateToastProps = {
   closeUpdateToast: () => void;
 };
 
+/**
+ * Displays application update status and the actions valid for that status.
+ *
+ * @param props - Update payload, visibility, and download/install/dismiss actions.
+ * @returns The update notification, or `null` while it is hidden.
+ */
 export const AppUpdateToast = ({
   updateStatus,
   isVisible,

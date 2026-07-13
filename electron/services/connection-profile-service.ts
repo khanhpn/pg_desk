@@ -146,6 +146,11 @@ const writeRawProfileList = async (
   await fs.chmod(profileListPath, 0o600);
 };
 
+/**
+ * Loads, decrypts, and migrates saved connection profiles from user storage.
+ *
+ * @returns Saved profiles and the identifier of the active profile.
+ */
 export const loadConnectionProfiles = async (): Promise<{
   activeConnectionId: string | null;
   profiles: PgConnectionProfile[];
@@ -176,6 +181,12 @@ export const loadConnectionProfiles = async (): Promise<{
   }
 };
 
+/**
+ * Loads one saved connection profile by identifier.
+ *
+ * @param connectionId - Profile identifier to resolve.
+ * @returns The decrypted profile, or `null` when it does not exist.
+ */
 export const loadConnectionProfile =
   async (): Promise<PgConnectionConfig | null> => {
     const list = await loadConnectionProfiles();
@@ -187,6 +198,12 @@ export const loadConnectionProfile =
     return profile ?? null;
   };
 
+/**
+ * Creates or updates an encrypted connection profile in user storage.
+ *
+ * @param config - Connection settings to persist.
+ * @returns The normalized persisted profile with its stable identifier.
+ */
 export const saveConnectionProfile = async (
   config: PgConnectionConfig,
 ): Promise<PgConnectionProfile> => {
@@ -212,6 +229,12 @@ export const saveConnectionProfile = async (
   return toConnectionProfile(nextStoredProfile);
 };
 
+/**
+ * Deletes a saved profile and repairs the active-profile selection if necessary.
+ *
+ * @param connectionId - Identifier of the profile to remove.
+ * @returns A promise that resolves when storage has been updated.
+ */
 export const deleteConnectionProfile = async (
   connectionId: string,
 ): Promise<void> => {
@@ -232,6 +255,12 @@ export const deleteConnectionProfile = async (
   });
 };
 
+/**
+ * Persists the profile that should be restored as active on the next load.
+ *
+ * @param connectionId - Existing profile identifier, or `null` to clear selection.
+ * @returns A promise that resolves after the profile list is written.
+ */
 export const setActiveConnectionProfile = async (
   connectionId: string,
 ): Promise<void> => {

@@ -1,3 +1,10 @@
+/**
+ * Converts an unknown caught value into a stable, user-presentable message.
+ *
+ * @param error - Value caught from an exception boundary.
+ * @returns The native message for `Error` instances or a string conversion for
+ * all other values.
+ */
 export const getErrorMessage = (error: unknown): string => {
   console.error("Electron main error:", error);
 

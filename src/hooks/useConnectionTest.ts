@@ -31,6 +31,17 @@ const toConnectionForm = (profile: PgConnectionProfile): PgConnectionForm => ({
   ssl: profile.ssl,
 });
 
+/**
+ * Owns connection-profile forms, active connection state, and connection
+ * lifecycle commands used by the renderer.
+ *
+ * @param options - Optional callback invoked after the active connection or
+ * saved profile collection changes.
+ * @returns Connection state plus commands for creating, editing, selecting,
+ * connecting, disconnecting, and deleting profiles.
+ * @remarks Reads and mutates connection state through the Electron preload
+ * bridge and refreshes the local profile snapshot after successful mutations.
+ */
 export const useConnectionTest = ({
   onActiveConnectionChanged,
 }: UseConnectionTestOptions = {}) => {

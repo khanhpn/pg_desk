@@ -10,6 +10,7 @@ import {
 import type { PgConnectionConfig } from "@electron/types/connection";
 import { loadConnectionProfile } from "@electron/services/connection-profile-service";
 
+/** Registers connection lifecycle and profile IPC handlers. @returns Nothing. */
 export const registerConnectionIpc = (): void => {
   ipcMain.handle(
     "connection:test",

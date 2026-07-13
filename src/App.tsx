@@ -22,7 +22,13 @@ import { useResizablePanels } from "@/hooks/useResizablePanels";
 import { useTableInspector } from "@/hooks/useTableInspector";
 import { useDatabaseMaintenance } from "@/hooks/useDatabaseMaintenance";
 import { useRelationSelection } from "@/hooks/useRelationSelection";
+import { useQueryTabConnection } from "@/hooks/useQueryTabConnection";
 
+/**
+ * Composes the renderer workspace and connects UI components to domain hooks.
+ *
+ * @returns The complete PgDesk application shell.
+ */
 const App = () => {
   const {
     connectionForm,
@@ -61,6 +67,7 @@ const App = () => {
     setSelectLimit,
     createTab,
     selectTab,
+    setTabConnection,
     closeTab,
     saveActiveTab,
     formatActiveTabSql,
@@ -69,6 +76,15 @@ const App = () => {
     handleStopQuery,
     handleOpenRelation,
   } = useSqlQuery(activeConnectionId);
+  const { selectQueryTab, selectConnectionForActiveTab } =
+    useQueryTabConnection({
+      tabs,
+      activeTabId,
+      activeConnectionId,
+      switchConnection: selectConnectionProfile,
+      selectTab,
+      setTabConnection,
+    });
   const { selectedRelationKey, handleSelectRelation } = useRelationSelection(
     activeConnectionId,
     handleOpenRelation,
@@ -163,7 +179,7 @@ const App = () => {
         closeConnectionModal={closeConnectionModal}
         handleConnect={handleConnect}
         handleDisconnect={handleDisconnect}
-        selectConnectionProfile={selectConnectionProfile}
+        selectConnectionProfile={selectConnectionForActiveTab}
         deleteConnectionProfile={deleteConnectionProfile}
         handleBackupDatabase={handleBackupDatabase}
         handleRestoreDatabase={handleRestoreDatabase}
@@ -190,7 +206,7 @@ const App = () => {
           activeTabId={activeTabId}
           canCreateTab={isConnected}
           createTab={createTab}
-          selectTab={selectTab}
+          selectTab={selectQueryTab}
           closeTab={closeTab}
         />
 

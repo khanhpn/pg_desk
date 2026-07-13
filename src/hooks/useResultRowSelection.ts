@@ -6,6 +6,13 @@ type UseResultRowSelectionOptions = {
   queryResult: QueryRunResult | null;
 };
 
+/**
+ * Maintains valid multi-row selection for the current result data set.
+ *
+ * @param options - Stable row identifiers and the query result that produced them.
+ * @returns Selection state and commands for toggling rows, selecting all rows,
+ * and clearing the selection.
+ */
 export const useResultRowSelection = ({
   rowIds,
   queryResult,

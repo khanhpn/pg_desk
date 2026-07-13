@@ -239,6 +239,7 @@ const closeSplashWindow = (afterClose?: () => void): void => {
   closeWindow();
 };
 
+/** Creates and stores the temporary splash window. @returns Nothing. */
 const createSplashWindow = (): void => {
   splashWindow = new BrowserWindow({
     width: 460,
@@ -270,6 +271,11 @@ const createSplashWindow = (): void => {
   void splashWindow.loadFile(splashPath);
 };
 
+/**
+ * Creates the primary window and loads the development or packaged renderer.
+ *
+ * @returns Nothing; updates main-process window lifecycle state.
+ */
 const createWindow = (): void => {
   win = new BrowserWindow({
     title: APP_NAME,

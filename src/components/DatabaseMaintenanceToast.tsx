@@ -5,6 +5,12 @@ type DatabaseMaintenanceToastProps = {
   closeToast: () => void;
 };
 
+/**
+ * Displays progress and completion feedback for database maintenance tasks.
+ *
+ * @param props - Current maintenance notification and its dismiss callback.
+ * @returns A status toast, or `null` when no maintenance task is visible.
+ */
 export const DatabaseMaintenanceToast = ({
   toast,
   closeToast,

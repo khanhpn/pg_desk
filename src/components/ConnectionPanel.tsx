@@ -11,6 +11,12 @@ type ConnectionPanelProps = {
   handleTestConnection: () => Promise<void>;
 };
 
+/**
+ * Renders connection profile management and the database explorer in one panel.
+ *
+ * @param props - Connection state, profile actions, and explorer properties.
+ * @returns The sidebar's connection and database navigation content.
+ */
 export const ConnectionPanel = ({
   connectionForm,
   connectionMessage,

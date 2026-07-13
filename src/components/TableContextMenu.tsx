@@ -8,6 +8,12 @@ type TableContextMenuProps = {
   openTableInspector: (relation: PgRelationInfo) => Promise<void>;
 };
 
+/**
+ * Renders contextual actions for a relation selected in the database explorer.
+ *
+ * @param props - Menu position, selected relation, and close/inspect callbacks.
+ * @returns A positioned context menu, or `null` when no menu is active.
+ */
 export const TableContextMenu = ({
   relation,
   x,

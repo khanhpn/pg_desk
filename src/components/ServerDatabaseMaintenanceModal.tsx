@@ -22,6 +22,12 @@ const getFileName = (filePath: string): string => {
   return filePath.split(/[\\/]/).pop() || filePath;
 };
 
+/**
+ * Renders multi-database backup and restore selection workflows for a server.
+ *
+ * @param props - Modal mode, database/file selections, form setters, and task actions.
+ * @returns The server maintenance dialog, or `null` while it is closed.
+ */
 export const ServerDatabaseMaintenanceModal = ({
   modal,
   connectionLabel,

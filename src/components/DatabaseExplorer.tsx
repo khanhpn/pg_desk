@@ -40,6 +40,12 @@ const relationMatchesFilter = (
   );
 };
 
+/**
+ * Renders schemas, tables, and views for the active PostgreSQL connection.
+ *
+ * @param props - Explorer metadata, selection state, and relation interaction callbacks.
+ * @returns The hierarchical database explorer tree.
+ */
 export const DatabaseExplorer = ({
   schemas,
   explorerMessage,

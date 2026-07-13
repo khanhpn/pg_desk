@@ -18,6 +18,14 @@ const getDefaultResultPanelHeight = (): number => {
   );
 };
 
+/**
+ * Owns pointer-driven dimensions for the sidebar and result panel.
+ *
+ * @returns Clamped panel dimensions, shell state, and pointer-down handlers that
+ * begin each resize interaction.
+ * @remarks Registers document-level pointer listeners only while a resize is in
+ * progress and removes them when resizing ends or the hook unmounts.
+ */
 export const useResizablePanels = () => {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [resultPanelHeight, setResultPanelHeight] = useState(

@@ -92,6 +92,16 @@ const getErrorMessage = (error: unknown): string => {
   return error instanceof Error ? error.message : String(error);
 };
 
+/**
+ * Coordinates single- and multi-database backup and restore workflows.
+ *
+ * @param options - Active connection context, connected profile identifiers,
+ * and the callback used to refresh database metadata after maintenance.
+ * @returns Modal state, toast state, selection commands, and backup/restore
+ * handlers consumed by the maintenance UI.
+ * @remarks Opens native file dialogs and invokes long-running Electron
+ * maintenance operations through the preload bridge.
+ */
 export const useDatabaseMaintenance = ({
   refreshExplorer,
   activeConnectionId,

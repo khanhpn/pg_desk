@@ -97,6 +97,14 @@ const isWordPart = (char: string): boolean => /[A-Za-z0-9_$]/.test(char);
 const isNumberPart = (char: string): boolean => /[0-9.]/.test(char);
 const isWhitespace = (char: string): boolean => /\s/.test(char);
 
+/**
+ * Finds the end of a quoted SQL token while respecting doubled quote escapes.
+ *
+ * @param sql - Complete SQL source text.
+ * @param start - Index of the opening quote.
+ * @param quote - Quote character that terminates the token.
+ * @returns The index immediately after the quoted token.
+ */
 const readQuotedValue = (sql: string, start: number, quote: string): number => {
   let index = start + 1;
 
@@ -116,6 +124,12 @@ const readQuotedValue = (sql: string, start: number, quote: string): number => {
   return sql.length;
 };
 
+/**
+ * Splits SQL into formatting tokens without changing quoted values or comments.
+ *
+ * @param sql - SQL source text to tokenize.
+ * @returns Ordered tokens consumed by the lightweight formatter.
+ */
 const tokenizeSql = (sql: string): SqlToken[] => {
   const tokens: SqlToken[] = [];
   let index = 0;
@@ -217,6 +231,13 @@ const tokenizeSql = (sql: string): SqlToken[] => {
   return tokens;
 };
 
+/**
+ * Formats SQL for readability while preserving literals, identifiers, and
+ * comments exactly as entered.
+ *
+ * @param sql - SQL source text to format.
+ * @returns Normalized SQL with keyword casing, indentation, and line breaks.
+ */
 export const formatSql = (sql: string): string => {
   const tokens = tokenizeSql(sql);
 

@@ -113,6 +113,19 @@ const getPersistableValues = (
   );
 };
 
+/**
+ * Owns editable result rows and persists inserts, updates, and deletes back to
+ * the source PostgreSQL table.
+ *
+ * @param queryResult - Current query result and table metadata used to determine
+ * whether rows are safely editable.
+ * @param connectionId - Connection used for table mutation requests.
+ * @param refreshResult - Optional callback that reloads query data after saving.
+ * @returns Editing capability, draft state, validation messages, and row mutation
+ * commands used by the result panel.
+ * @remarks Saves selected changes through the preload bridge and retains drafts
+ * when validation or persistence fails.
+ */
 export const useResultEditing = (
   queryResult: QueryRunResult | null,
   connectionId: string | null,

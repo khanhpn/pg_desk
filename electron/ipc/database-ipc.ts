@@ -13,6 +13,7 @@ import type {
   PgMultiDatabaseRestorePayload,
 } from "@electron/types/database";
 
+/** Registers database discovery, backup, restore, and picker IPC handlers. @returns Nothing. */
 export const registerDatabaseIpc = (): void => {
   ipcMain.handle(
     "database:backup",

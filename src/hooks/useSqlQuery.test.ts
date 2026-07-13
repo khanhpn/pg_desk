@@ -64,7 +64,39 @@ describe("useSqlQuery", () => {
       id: "query-2",
       title: "Query 2",
       sql: "select 1;",
+      connectionId: "connection-1",
     });
+  });
+
+  it("stores a separate connection context for each query tab", () => {
+    const { result, rerender } = renderHook(
+      ({ connectionId }) => useSqlQuery(connectionId),
+      { initialProps: { connectionId: "connection-1" } },
+    );
+
+    expect(result.current.tabs[0].connectionId).toBe("connection-1");
+
+    act(() => {
+      result.current.createTab();
+    });
+
+    rerender({ connectionId: "connection-2" });
+    act(() => {
+      result.current.setTabConnection("query-2", "connection-2");
+    });
+
+    expect(result.current.tabs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "query-1",
+          connectionId: "connection-1",
+        }),
+        expect.objectContaining({
+          id: "query-2",
+          connectionId: "connection-2",
+        }),
+      ]),
+    );
   });
 
   it("runs the active SQL against the active connection", async () => {

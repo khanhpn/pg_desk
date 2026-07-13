@@ -1,6 +1,13 @@
 import { useCallback, useState } from "react";
 import type { PgSchemaInfo } from "@/types/metadata";
 
+/**
+ * Loads the schema and relation tree for a PostgreSQL connection.
+ *
+ * @param connectionId - Active connection whose metadata should be loaded, or
+ * `null` when no profile is active.
+ * @returns Explorer data, loading and status state, and a refresh command.
+ */
 export const useDatabaseExplorer = (connectionId: string | null) => {
   const [schemas, setSchemas] = useState<PgSchemaInfo[]>([]);
   const [explorerMessage, setExplorerMessage] = useState("Not loaded");

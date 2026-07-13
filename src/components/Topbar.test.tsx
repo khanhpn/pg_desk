@@ -5,6 +5,7 @@ import type { QueryTab } from "@/hooks/useSqlQuery";
 
 const createTab = (overrides: Partial<QueryTab> = {}): QueryTab => ({
   id: "query-1",
+  connectionId: "connection-1",
   title: "Query 1",
   sql: "select 1;",
   savedSql: "select 1;",

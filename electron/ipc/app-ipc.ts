@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 
+/** Registers application-level IPC handlers. @returns Nothing. */
 export const registerAppIpc = (): void => {
   ipcMain.handle("app:ping", async () => {
     return {

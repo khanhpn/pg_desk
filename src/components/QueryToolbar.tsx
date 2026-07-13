@@ -14,6 +14,12 @@ type QueryToolbarProps = {
   setSelectLimit: (limit: QueryLimit) => void;
 };
 
+/**
+ * Renders query execution, formatting, persistence, and row-limit controls.
+ *
+ * @param props - Active query state and toolbar command callbacks.
+ * @returns The SQL query action toolbar.
+ */
 export const QueryToolbar = ({
   isRunningQuery,
   isActiveTabDirty,

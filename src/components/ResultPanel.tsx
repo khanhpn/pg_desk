@@ -88,6 +88,12 @@ const DeleteIcon = (): JSX.Element => (
   </svg>
 );
 
+/**
+ * Renders query results with column sizing, row selection, and editable-row tools.
+ *
+ * @param props - Query output, active connection context, and result refresh command.
+ * @returns The result status area and data grid.
+ */
 export const ResultPanel = ({
   connectionId,
   queryResult,

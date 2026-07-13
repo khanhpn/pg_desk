@@ -6,6 +6,7 @@ import {
 } from "@electron/services/postgres-metadata-service";
 import type { PgTableChangePayload } from "@electron/types/metadata";
 
+/** Registers schema explorer and table metadata IPC handlers. @returns Nothing. */
 export const registerMetadataIpc = (): void => {
   ipcMain.handle(
     "metadata:explorer",
