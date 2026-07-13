@@ -3,7 +3,7 @@
   "description": "A lightweight PostgreSQL desktop client",
   "author": "Khanh Pham",
   "private": true,
-  "version": "0.1.39",
+  "version": "0.1.40",
   "type": "module",
   "engines": {
     "node": "24.15.0"
