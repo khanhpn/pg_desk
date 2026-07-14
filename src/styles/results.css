@@ -1,7 +1,7 @@
 .result-panel {
-  height: var(--result-panel-height, 260px);
+  height: var(--result-panel-height, 700px);
   min-height: 300px;
-  flex: 0 0 var(--result-panel-height, 260px);
+  flex: 0 0 var(--result-panel-height, 700px);
   display: flex;
   flex-direction: column;
   background: var(--surface-0);
