@@ -29,6 +29,11 @@ type PersistedQueryWorkspace = {
   nextTabIndex: number;
 };
 
+type ActiveQueryRun = {
+  requestId: string;
+  connectionId: string | null;
+};
+
 const queryWorkspaceStorageKey = "pgdesk.queryWorkspace";
 
 const defaultSql = `select
@@ -86,9 +91,9 @@ const readPersistedWorkspace = (): PersistedQueryWorkspace | null => {
       return null;
     }
 
-    const workspace = JSON.parse(rawWorkspace) as PersistedQueryWorkspace;
+    const workspace: unknown = JSON.parse(rawWorkspace);
 
-    if (!Array.isArray(workspace.tabs) || workspace.tabs.length === 0) {
+    if (!isPersistedQueryWorkspace(workspace)) {
       return null;
     }
 
@@ -96,6 +101,48 @@ const readPersistedWorkspace = (): PersistedQueryWorkspace | null => {
   } catch {
     return null;
   }
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null;
+};
+
+const isPersistedQueryTab = (value: unknown): value is PersistedQueryTab => {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const connectionId = value.connectionId;
+
+  return (
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.title === "string" &&
+    typeof value.sql === "string" &&
+    (connectionId === undefined ||
+      connectionId === null ||
+      typeof connectionId === "string")
+  );
+};
+
+const isPersistedQueryWorkspace = (
+  value: unknown,
+): value is PersistedQueryWorkspace => {
+  if (!isRecord(value) || !Array.isArray(value.tabs)) {
+    return false;
+  }
+
+  if (
+    value.tabs.length === 0 ||
+    !value.tabs.every(isPersistedQueryTab) ||
+    typeof value.activeTabId !== "string" ||
+    !Number.isInteger(value.nextTabIndex) ||
+    (value.nextTabIndex as number) < 1
+  ) {
+    return false;
+  }
+
+  return value.tabs.some((tab) => tab.id === value.activeTabId);
 };
 
 const writePersistedWorkspace = (
@@ -170,7 +217,7 @@ export const useSqlQuery = (connectionId: string | null) => {
     createInitialQueryWorkspaceState(connectionId),
   );
   const nextTabIndexRef = useRef(initialWorkspace.nextTabIndex);
-  const activeRunIdRef = useRef<string | null>(null);
+  const activeRunsByTabIdRef = useRef<Map<string, ActiveQueryRun>>(new Map());
   const [tabs, setTabs] = useState<QueryTab[]>(initialWorkspace.tabs);
   const [activeTabId, setActiveTabId] = useState(initialWorkspace.activeTabId);
   const [selectLimit, setSelectLimit] = useState<QueryLimit>(100);
@@ -179,6 +226,7 @@ export const useSqlQuery = (connectionId: string | null) => {
   >({});
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+  const queryConnectionId = activeTab.connectionId ?? connectionId;
 
   const updateTab = useCallback(
     (tabId: string, updater: (tab: QueryTab) => QueryTab): void => {
@@ -281,15 +329,25 @@ export const useSqlQuery = (connectionId: string | null) => {
     async (
       tabId: string,
       nextSql: string,
+      runConnectionId: string | null,
       options: { applyLimit?: boolean } = {},
     ): Promise<void> => {
+      if (activeRunsByTabIdRef.current.has(tabId)) {
+        return;
+      }
+
       const requestId = crypto.randomUUID();
       const sqlToRun =
         options.applyLimit === false
           ? nextSql
           : applySelectLimit(nextSql, selectLimit);
 
-      activeRunIdRef.current = requestId;
+      const activeRun: ActiveQueryRun = {
+        requestId,
+        connectionId: runConnectionId,
+      };
+
+      activeRunsByTabIdRef.current.set(tabId, activeRun);
 
       updateTab(tabId, (tab) => ({
         ...tab,
@@ -300,49 +358,58 @@ export const useSqlQuery = (connectionId: string | null) => {
       try {
         const result = await window.pgdesk.query.run(
           sqlToRun,
-          connectionId,
+          runConnectionId,
           requestId,
         );
 
-        updateTab(tabId, (tab) => ({
-          ...tab,
-          queryResult: result,
-          queryMessage: result.ok
-            ? `${result.command ?? "QUERY"} · ${result.rowCount} rows · ${result.durationMs}ms`
-            : `Error: ${result.message}`,
-        }));
+        if (activeRunsByTabIdRef.current.get(tabId)?.requestId === requestId) {
+          updateTab(tabId, (tab) => ({
+            ...tab,
+            queryResult: result,
+            queryMessage: result.ok
+              ? `${result.command ?? "QUERY"} · ${result.rowCount} rows · ${result.durationMs}ms`
+              : `Error: ${result.message}`,
+          }));
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
 
-        updateTab(tabId, (tab) => ({
-          ...tab,
-          queryMessage: `Error: ${message}`,
-        }));
-      } finally {
-        if (activeRunIdRef.current === requestId) {
-          activeRunIdRef.current = null;
+        if (activeRunsByTabIdRef.current.get(tabId)?.requestId === requestId) {
+          updateTab(tabId, (tab) => ({
+            ...tab,
+            queryMessage: `Error: ${message}`,
+          }));
         }
-
-        updateTab(tabId, (tab) => ({
-          ...tab,
-          isRunningQuery: false,
-        }));
+      } finally {
+        if (activeRunsByTabIdRef.current.get(tabId)?.requestId === requestId) {
+          activeRunsByTabIdRef.current.delete(tabId);
+          updateTab(tabId, (tab) => ({
+            ...tab,
+            isRunningQuery: false,
+          }));
+        }
       }
     },
-    [connectionId, selectLimit, updateTab],
+    [selectLimit, updateTab],
   );
 
   const handleRunQuery = useCallback(async (): Promise<void> => {
     const selectedSql = selectedSqlByTabId[activeTab.id];
     const sqlToRun = selectedSql?.trim() ? selectedSql : activeTab.sql;
 
-    await runSqlText(activeTab.id, sqlToRun);
-  }, [activeTab.id, activeTab.sql, runSqlText, selectedSqlByTabId]);
+    await runSqlText(activeTab.id, sqlToRun, queryConnectionId);
+  }, [
+    activeTab.id,
+    activeTab.sql,
+    queryConnectionId,
+    runSqlText,
+    selectedSqlByTabId,
+  ]);
 
   const handleStopQuery = useCallback(async (): Promise<void> => {
-    const requestId = activeRunIdRef.current;
+    const activeRun = activeRunsByTabIdRef.current.get(activeTab.id);
 
-    if (!connectionId || !requestId) {
+    if (!activeRun?.connectionId) {
       updateTab(activeTab.id, (tab) => ({
         ...tab,
         queryMessage: "No running query to stop",
@@ -356,7 +423,10 @@ export const useSqlQuery = (connectionId: string | null) => {
     }));
 
     try {
-      const result = await window.pgdesk.query.cancel(connectionId, requestId);
+      const result = await window.pgdesk.query.cancel(
+        activeRun.connectionId,
+        activeRun.requestId,
+      );
 
       if (!result.ok) {
         updateTab(activeTab.id, (tab) => ({
@@ -372,7 +442,7 @@ export const useSqlQuery = (connectionId: string | null) => {
         queryMessage: `Stop failed: ${message}`,
       }));
     }
-  }, [activeTab.id, connectionId, updateTab]);
+  }, [activeTab.id, updateTab]);
 
   const handleExplainQuery = useCallback(async (): Promise<void> => {
     updateTab(activeTab.id, (tab) => ({
@@ -384,7 +454,7 @@ export const useSqlQuery = (connectionId: string | null) => {
     try {
       const result = await window.pgdesk.query.explain(
         activeTab.sql,
-        connectionId,
+        queryConnectionId,
       );
 
       updateTab(activeTab.id, (tab) => ({
@@ -407,7 +477,7 @@ export const useSqlQuery = (connectionId: string | null) => {
         isRunningQuery: false,
       }));
     }
-  }, [activeTab.id, activeTab.sql, connectionId, updateTab]);
+  }, [activeTab.id, activeTab.sql, queryConnectionId, updateTab]);
 
   const formatActiveTabSql = useCallback((): void => {
     const formattedSql = formatSql(activeTab.sql);
@@ -435,9 +505,11 @@ export const useSqlQuery = (connectionId: string | null) => {
         isDirty: tab.savedSql === null || nextSql !== tab.savedSql,
       }));
 
-      await runSqlText(tabId, nextSql, { applyLimit: false });
+      await runSqlText(tabId, nextSql, queryConnectionId, {
+        applyLimit: false,
+      });
     },
-    [activeTab.id, runSqlText, selectLimit, updateTab],
+    [activeTab.id, queryConnectionId, runSqlText, selectLimit, updateTab],
   );
 
   const saveActiveTab = useCallback((): void => {
@@ -461,6 +533,7 @@ export const useSqlQuery = (connectionId: string | null) => {
   return {
     tabs,
     activeTabId,
+    queryConnectionId,
     sql: activeTab.sql,
     setSql,
     setSqlSelection,

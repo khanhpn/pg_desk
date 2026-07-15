@@ -12,6 +12,12 @@ export type PgSchemaInfo = {
   views: PgRelationInfo[];
 };
 
+export type PgDatabaseExplorerResult = {
+  ok: boolean;
+  message: string;
+  schemas: PgSchemaInfo[];
+};
+
 export type PgTableColumnInfo = {
   name: string;
   ordinalPosition: number;

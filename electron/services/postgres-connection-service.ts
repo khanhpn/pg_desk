@@ -54,6 +54,45 @@ type QueryFieldMetadata = {
   columnID: number;
 };
 
+/**
+ * Converts positional PostgreSQL rows into renderer records without losing
+ * values when multiple fields share the same output name.
+ *
+ * @param fields - Ordered field names returned by PostgreSQL.
+ * @param rows - Positional rows produced with `rowMode: "array"`.
+ * @returns Unique display column names and records keyed by those names.
+ */
+export const normalizeQueryResultRows = (
+  fields: Array<{ name: string }>,
+  rows: unknown[][],
+): { columns: string[]; rows: Record<string, unknown>[] } => {
+  const occurrences = new Map<string, number>();
+  const usedNames = new Set<string>();
+  const columns = fields.map((field) => {
+    let occurrence = (occurrences.get(field.name) ?? 0) + 1;
+    let displayName =
+      occurrence === 1 ? field.name : `${field.name} (${occurrence})`;
+
+    while (usedNames.has(displayName)) {
+      occurrence += 1;
+      displayName = `${field.name} (${occurrence})`;
+    }
+
+    occurrences.set(field.name, occurrence);
+    usedNames.add(displayName);
+    return displayName;
+  });
+
+  return {
+    columns,
+    rows: rows.map((row) => {
+      return Object.fromEntries(
+        columns.map((column, index) => [column, row[index]]),
+      );
+    }),
+  };
+};
+
 type PrimaryKeyColumnRow = {
   table_oid: number;
   schema_name: string;
@@ -287,6 +326,7 @@ const getSourceColumnMetadata = async (
 const buildColumnMetadata = async (
   pool: PgPool,
   fields: QueryFieldMetadata[],
+  displayColumnNames: string[],
 ): Promise<{ columns: QueryColumnMetadata[]; editMessage: string }> => {
   const tableOids = Array.from(
     new Set(fields.map((field) => field.tableID).filter((tableId) => tableId)),
@@ -307,7 +347,7 @@ const buildColumnMetadata = async (
 
   const hasDuplicateColumnNames = duplicateColumnNames.size > 0;
 
-  const columns = fields.map<QueryColumnMetadata>((field) => {
+  const columns = fields.map<QueryColumnMetadata>((field, fieldIndex) => {
     const table = primaryKeyMetadata.get(field.tableID);
     const sourceColumn = sourceColumnMetadata.get(
       `${field.tableID}.${field.columnID}`,
@@ -327,7 +367,7 @@ const buildColumnMetadata = async (
     const isTableColumn = field.tableID > 0 && field.columnID > 0;
 
     return {
-      name: field.name,
+      name: displayColumnNames[fieldIndex] ?? field.name,
       dataTypeId: field.dataTypeID,
       tableOid: field.tableID,
       columnId: field.columnID,
@@ -619,19 +659,28 @@ export const runPostgresQuery = async ({
       });
     }
 
-    const result = await client.query(sql);
+    const result = await client.query({
+      text: sql,
+      rowMode: "array",
+    });
     const durationMs = Date.now() - startedAt;
+    const fields = result.fields as QueryFieldMetadata[];
+    const normalizedResult = normalizeQueryResultRows(
+      fields,
+      result.rows as unknown[][],
+    );
     const { columns: columnMetadata, editMessage } = await buildColumnMetadata(
       pool,
-      result.fields as QueryFieldMetadata[],
+      fields,
+      normalizedResult.columns,
     );
 
     return {
       ok: true,
       message: "Query executed successfully",
-      columns: result.fields.map((field) => field.name),
+      columns: normalizedResult.columns,
       columnMetadata,
-      rows: result.rows,
+      rows: normalizedResult.rows,
       rowCount: result.rowCount ?? result.rows.length,
       durationMs,
       command: result.command,

@@ -63,6 +63,7 @@ const App = () => {
     selectLimit,
     tabs,
     activeTabId,
+    queryConnectionId,
     isActiveTabDirty,
     setSelectLimit,
     createTab,
@@ -241,7 +242,7 @@ const App = () => {
         />
 
         <ResultPanel
-          connectionId={activeConnectionId}
+          connectionId={queryConnectionId}
           queryResult={queryResult}
           queryMessage={queryMessage}
           panelHeight={resultPanelHeight}

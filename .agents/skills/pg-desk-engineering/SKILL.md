@@ -20,7 +20,8 @@ Preserve the existing architecture while making the smallest complete change. Ke
 7. Update comments, mirrored types, preload contracts, tests, and documentation affected by the change.
 8. Remove artifacts made obsolete by the implementation.
 9. Run focused checks, then the full verification gate.
-10. Review the final diff for scope, accuracy, dead code, and accidental user-change loss.
+10. Perform final artifact cleanup before handoff.
+11. Review the final diff for scope, accuracy, dead code, and accidental user-change loss.
 
 ## Architecture boundaries
 
@@ -177,12 +178,23 @@ Example:
 ## Cleanup and repository hygiene
 
 - Remove unused imports, dead branches, superseded helpers, stale props, obsolete types, and abandoned UI placeholders introduced or exposed by the change.
-- Delete temporary plans, screenshots, generated samples, debug logs, and one-off scripts when they are no longer deliverables.
+- Delete temporary plans, specifications, screenshots, generated samples, debug logs, and one-off scripts when they are no longer deliverables.
 - Retain product documentation, approved design documents, tests, migrations, and audit artifacts that remain part of the feature.
 - Do not delete an unfamiliar file merely because it is unreferenced; inspect ownership and history first.
 - Never overwrite, restore, stage, or commit unrelated user changes.
 - Do not use destructive Git commands to clean a dirty worktree.
 - Avoid dependency additions when existing platform or repository utilities solve the problem.
+
+### Final artifact cleanup
+
+After verification passes and before the final handoff:
+
+1. Check `git status --short` against the task's baseline status.
+2. Delete task-only planning artifacts created during execution, including files under `docs/superpowers/plans/` and `docs/superpowers/specs/`.
+3. Delete generated test output, screenshots, traces, temporary scripts, and diagnostic files created by the task.
+4. Re-run `git status --short` and `git diff --check` after cleanup.
+
+Keep a planning or specification file only when the user explicitly requested it, it was an agreed deliverable, or it is durable product documentation. Never delete pre-existing or user-owned artifacts while cleaning up the current task.
 
 ## Verification gate
 
@@ -210,6 +222,7 @@ Run focused tests during development. Run the full gate before claiming completi
 - [ ] Async resources and subscriptions are cleaned up.
 - [ ] TSDoc and product documentation reflect changed behavior.
 - [ ] Obsolete files and code introduced or superseded by the task are removed safely.
+- [ ] Task-only `docs/superpowers/` plans and specifications have been removed unless they are explicit deliverables.
 - [ ] Focused tests and the full verification gate pass.
 - [ ] Final diff contains no unrelated or accidental changes.
 
@@ -226,4 +239,5 @@ Stop and correct the design when any of these appear:
 - An effect with suppressed dependencies or missing listener cleanup.
 - Behavior changed while comments, tests, or mirrored contracts remain stale.
 - Placeholder UI, temporary files, dead code, or debug logging left behind.
+- Task-generated `docs/superpowers/` plans or specifications retained without an explicit deliverable requirement.
 - Completion claimed without fresh verification output.

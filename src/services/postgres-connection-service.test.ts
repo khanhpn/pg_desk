@@ -4,7 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyPostgresTableChangesFromPool,
   deletePostgresRowFromPool,
+  normalizeQueryResultRows,
 } from "@electron/services/postgres-connection-service";
+
+describe("normalizeQueryResultRows", () => {
+  it("preserves values when SELECT returns duplicate column names", () => {
+    const result = normalizeQueryResultRows(
+      [{ name: "id" }, { name: "id" }, { name: "name" }],
+      [[99, 1, "Alice"]],
+    );
+
+    expect(result).toEqual({
+      columns: ["id", "id (2)", "name"],
+      rows: [{ id: 99, "id (2)": 1, name: "Alice" }],
+    });
+  });
+});
 
 describe("deletePostgresRowFromPool", () => {
   it("deletes a row by primary key using bound values", async () => {

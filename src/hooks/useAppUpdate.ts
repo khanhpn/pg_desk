@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { UpdateStatusPayload } from "@/vite-env";
 
 const visibleStatuses = new Set<UpdateStatusPayload["status"]>([
@@ -28,6 +28,16 @@ export const useAppUpdate = () => {
   );
 
   const [isUpdateToastVisible, setIsUpdateToastVisible] = useState(false);
+  const installFallbackTimerRef = useRef<number | null>(null);
+
+  const clearInstallFallbackTimer = useCallback((): void => {
+    if (installFallbackTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(installFallbackTimerRef.current);
+    installFallbackTimerRef.current = null;
+  }, []);
 
   const handleDownloadUpdate = useCallback(async (): Promise<void> => {
     setUpdateStatus((current: UpdateStatusPayload | null) => ({
@@ -43,6 +53,7 @@ export const useAppUpdate = () => {
   }, []);
 
   const handleInstallUpdate = useCallback(async (): Promise<void> => {
+    clearInstallFallbackTimer();
     setUpdateStatus({
       status: "installing",
       message: "PGDesk is restarting to install the update...",
@@ -51,7 +62,8 @@ export const useAppUpdate = () => {
 
     await window.pgdesk.update.install();
 
-    window.setTimeout(() => {
+    installFallbackTimerRef.current = window.setTimeout(() => {
+      installFallbackTimerRef.current = null;
       setUpdateStatus((current) => {
         if (current?.status !== "installing") {
           return current;
@@ -64,7 +76,7 @@ export const useAppUpdate = () => {
         };
       });
     }, 10000);
-  }, []);
+  }, [clearInstallFallbackTimer]);
 
   const closeUpdateToast = useCallback((): void => {
     setIsUpdateToastVisible(false);
@@ -72,6 +84,7 @@ export const useAppUpdate = () => {
 
   useEffect(() => {
     const unsubscribe = window.pgdesk.update.onStatus((payload) => {
+      clearInstallFallbackTimer();
       setUpdateStatus(payload);
 
       if (
@@ -87,8 +100,11 @@ export const useAppUpdate = () => {
 
     void window.pgdesk.update.check();
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      clearInstallFallbackTimer();
+      unsubscribe();
+    };
+  }, [clearInstallFallbackTimer]);
 
   return {
     updateStatus,
