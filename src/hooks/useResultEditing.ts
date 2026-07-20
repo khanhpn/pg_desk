@@ -120,7 +120,8 @@ const getPersistableValues = (
  * @param queryResult - Current query result and table metadata used to determine
  * whether rows are safely editable.
  * @param connectionId - Connection used for table mutation requests.
- * @param refreshResult - Optional callback that reloads query data after saving.
+ * @param refreshResult - Optional callback that reloads query data after inserts
+ * so generated values can be displayed.
  * @returns Editing capability, draft state, validation messages, and row mutation
  * commands used by the result panel.
  * @remarks Saves selected changes through the preload bridge and retains drafts
@@ -355,7 +356,7 @@ export const useResultEditing = (
 
       setDirtyCells({});
 
-      if (refreshResult) {
+      if (refreshResult && payload.inserts.length > 0) {
         await refreshResult();
       } else {
         setDraftRows((currentRows) => currentRows.filter((row) => !row.isNew));

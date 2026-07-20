@@ -66,4 +66,42 @@ describe("useResultEditing", () => {
     });
     expect(result.current.draftRows[1].id).toMatch(/^new-/);
   });
+
+  it("keeps an updated row in place after saving", async () => {
+    const refreshResult = vi.fn().mockResolvedValue(undefined);
+    const resultWithMultipleRows: QueryRunResult = {
+      ...queryResult,
+      rows: [
+        { id: 1, name: "Jane" },
+        { id: 2, name: "John" },
+        { id: 3, name: "Jill" },
+      ],
+      rowCount: 3,
+    };
+    vi.mocked(window.pgdesk.query.applyTableChanges).mockResolvedValue({
+      ok: true,
+      message: "Saved 1 row",
+      rowCount: 1,
+    });
+    const { result } = renderHook(() =>
+      useResultEditing(resultWithMultipleRows, "connection-1", refreshResult),
+    );
+    const middleRowId = result.current.draftRows[1].id;
+
+    act(() => {
+      result.current.updateDraftCell(middleRowId, "name", "Johnny");
+    });
+
+    await act(async () => {
+      await result.current.saveChanges();
+    });
+
+    expect(refreshResult).not.toHaveBeenCalled();
+    expect(result.current.draftRows.map((row) => row.values)).toEqual([
+      { id: 1, name: "Jane" },
+      { id: 2, name: "Johnny" },
+      { id: 3, name: "Jill" },
+    ]);
+    expect(result.current.hasPendingChanges).toBe(false);
+  });
 });
