@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   applyPostgresTableChangesFromPool,
+  buildQueryColumnMetadata,
   deletePostgresRowFromPool,
   normalizeQueryResultRows,
 } from "@electron/services/postgres-connection-service";
@@ -17,6 +18,61 @@ describe("normalizeQueryResultRows", () => {
     expect(result).toEqual({
       columns: ["id", "id (2)", "name"],
       rows: [{ id: 99, "id (2)": 1, name: "Alice" }],
+    });
+  });
+});
+
+describe("buildQueryColumnMetadata", () => {
+  it("includes formatted data types and source-column default status", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            table_oid: 10,
+            schema_name: "public",
+            table_name: "users",
+            column_name: "id",
+            column_id: 1,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            table_oid: 10,
+            schema_name: "public",
+            table_name: "users",
+            column_name: "id",
+            column_id: 1,
+            formatted_data_type: "character varying(120)",
+            has_default: true,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          { type_oid: 23, formatted_data_type: "integer" },
+          { type_oid: 25, formatted_data_type: "text" },
+        ],
+      });
+
+    const result = await buildQueryColumnMetadata(
+      { query } as never,
+      [
+        { name: "id", dataTypeID: 23, tableID: 10, columnID: 1 },
+        { name: "label", dataTypeID: 25, tableID: 0, columnID: 0 },
+      ],
+      ["id", "label"],
+    );
+
+    expect(result.columns[0]).toMatchObject({
+      dataType: "character varying(120)",
+      hasDefault: true,
+    });
+    expect(result.columns[1]).toMatchObject({
+      dataType: "text",
+      hasDefault: false,
     });
   });
 });

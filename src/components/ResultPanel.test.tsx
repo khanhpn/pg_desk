@@ -24,6 +24,8 @@ const queryResult: QueryRunResult = {
     {
       name: "id",
       dataTypeId: 23,
+      dataType: "integer",
+      hasDefault: true,
       tableOid: 10,
       columnId: 1,
       columnName: "id",
@@ -35,6 +37,8 @@ const queryResult: QueryRunResult = {
     {
       name: "name",
       dataTypeId: 25,
+      dataType: "character varying(120)",
+      hasDefault: false,
       tableOid: 10,
       columnId: 2,
       columnName: "name",
@@ -46,6 +50,8 @@ const queryResult: QueryRunResult = {
     {
       name: "active",
       dataTypeId: 16,
+      dataType: "boolean",
+      hasDefault: true,
       tableOid: 10,
       columnId: 3,
       columnName: "active",
@@ -129,6 +135,28 @@ describe("ResultPanel", () => {
     expect(
       screen.getByRole("button", { name: "Delete selected rows" }),
     ).not.toBeDisabled();
+  });
+
+  it("renders datatype before default status in each column header", () => {
+    render(
+      <ResultPanel
+        connectionId="connection-1"
+        queryResult={queryResult}
+        queryMessage="SELECT · 2 rows · 2ms"
+        panelHeight={240}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", {
+        name: "id integer Default: Yes",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", {
+        name: "name character varying(120) Default: No",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("adds a draft row and saves updates and inserts together", async () => {

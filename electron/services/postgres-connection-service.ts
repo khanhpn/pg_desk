@@ -123,6 +123,13 @@ type SourceColumnRow = {
   table_name: string;
   column_name: string;
   column_id: number;
+  formatted_data_type: string;
+  has_default: boolean;
+};
+
+type ResultDataTypeRow = {
+  type_oid: number;
+  formatted_data_type: string;
 };
 
 type ExplainPlanNode = {
@@ -304,10 +311,15 @@ const getSourceColumnMetadata = async (
         n.nspname as schema_name,
         c.relname as table_name,
         a.attname as column_name,
-        a.attnum::int as column_id
+        a.attnum::int as column_id,
+        format_type(a.atttypid, a.atttypmod) as formatted_data_type,
+        (ad.oid is not null) as has_default
       from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       join pg_attribute a on a.attrelid = c.oid
+      left join pg_attrdef ad
+        on ad.adrelid = a.attrelid
+        and ad.adnum = a.attnum
       where c.oid = any($1::oid[])
         and c.relkind in ('r', 'p')
         and a.attnum > 0
@@ -323,7 +335,43 @@ const getSourceColumnMetadata = async (
   return metadata;
 };
 
-const buildColumnMetadata = async (
+const getResultDataTypes = async (
+  pool: PgPool,
+  fields: QueryFieldMetadata[],
+): Promise<Map<number, string>> => {
+  const dataTypeIds = Array.from(
+    new Set(fields.map((field) => field.dataTypeID).filter(Boolean)),
+  );
+
+  if (dataTypeIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await pool.query<ResultDataTypeRow>(
+    `
+      select
+        t.oid::int as type_oid,
+        format_type(t.oid, null) as formatted_data_type
+      from pg_type t
+      where t.oid = any($1::oid[])
+    `,
+    [dataTypeIds],
+  );
+
+  return new Map(
+    result.rows.map((row) => [row.type_oid, row.formatted_data_type]),
+  );
+};
+
+/**
+ * Builds display and edit metadata for an ordered PostgreSQL query result.
+ *
+ * @param pool - Connected pool used to read PostgreSQL catalog metadata.
+ * @param fields - Ordered result fields returned by the PostgreSQL driver.
+ * @param displayColumnNames - Unique renderer-facing names for each field.
+ * @returns Ordered column metadata and the result editing status message.
+ */
+export const buildQueryColumnMetadata = async (
   pool: PgPool,
   fields: QueryFieldMetadata[],
   displayColumnNames: string[],
@@ -333,6 +381,7 @@ const buildColumnMetadata = async (
   );
   const primaryKeyMetadata = await getPrimaryKeyMetadata(pool, tableOids);
   const sourceColumnMetadata = await getSourceColumnMetadata(pool, tableOids);
+  const resultDataTypes = await getResultDataTypes(pool, fields);
   const duplicateColumnNames = new Set<string>();
   const seenColumnNames = new Set<string>();
 
@@ -369,6 +418,11 @@ const buildColumnMetadata = async (
     return {
       name: displayColumnNames[fieldIndex] ?? field.name,
       dataTypeId: field.dataTypeID,
+      dataType:
+        sourceColumn?.formatted_data_type ??
+        resultDataTypes.get(field.dataTypeID) ??
+        String(field.dataTypeID),
+      hasDefault: sourceColumn?.has_default ?? false,
       tableOid: field.tableID,
       columnId: field.columnID,
       columnName: sourceColumn?.column_name ?? null,
@@ -669,11 +723,8 @@ export const runPostgresQuery = async ({
       fields,
       result.rows as unknown[][],
     );
-    const { columns: columnMetadata, editMessage } = await buildColumnMetadata(
-      pool,
-      fields,
-      normalizedResult.columns,
-    );
+    const { columns: columnMetadata, editMessage } =
+      await buildQueryColumnMetadata(pool, fields, normalizedResult.columns);
 
     return {
       ok: true,

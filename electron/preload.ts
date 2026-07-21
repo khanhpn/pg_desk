@@ -114,6 +114,8 @@ type QueryRunResult = {
 type QueryColumnMetadata = {
   name: string;
   dataTypeId: number;
+  dataType: string;
+  hasDefault: boolean;
   tableOid: number;
   columnId: number;
   columnName: string | null;

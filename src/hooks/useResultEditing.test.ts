@@ -11,6 +11,8 @@ const queryResult: QueryRunResult = {
     {
       name: "id",
       dataTypeId: 23,
+      dataType: "integer",
+      hasDefault: true,
       tableOid: 10,
       columnId: 1,
       columnName: "id",
@@ -22,6 +24,8 @@ const queryResult: QueryRunResult = {
     {
       name: "name",
       dataTypeId: 25,
+      dataType: "text",
+      hasDefault: false,
       tableOid: 10,
       columnId: 2,
       columnName: "name",

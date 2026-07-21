@@ -188,14 +188,14 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 34px;
+  height: 58px;
   background: color-mix(in srgb, var(--surface-1) 92%, var(--surface-0));
   color: var(--text-muted);
   font-weight: 700;
   text-align: left;
   border-bottom: 1px solid var(--border);
   border-right: 1px solid var(--border-soft);
-  padding: 0 12px;
+  padding: 6px 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -282,6 +282,31 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.result-column-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-column-data-type,
+.result-column-default {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+}
+
+.result-column-data-type {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    monospace;
 }
 
 .result-column-resize-handle {

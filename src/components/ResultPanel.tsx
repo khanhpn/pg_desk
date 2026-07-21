@@ -322,20 +322,39 @@ export const ResultPanel = ({
                 />
                 <th>#</th>
 
-                {columns.map((column) => (
-                  <th key={column}>
-                    <span className="result-column-label">{column}</span>
-                    <span
-                      className="result-column-resize-handle"
-                      role="separator"
-                      aria-label={`Resize ${column} column`}
-                      aria-orientation="vertical"
-                      onPointerDown={(event) => {
-                        handleColumnResizeStart(column, event);
-                      }}
-                    />
-                  </th>
-                ))}
+                {columns.map((column) => {
+                  const columnMetadata = columnMetadataByName.get(column);
+                  const dataType = columnMetadata?.dataType ?? "unknown";
+                  const defaultStatus = columnMetadata?.hasDefault
+                    ? "Yes"
+                    : "No";
+
+                  return (
+                    <th
+                      aria-label={`${column} ${dataType} Default: ${defaultStatus}`}
+                      key={column}
+                    >
+                      <span className="result-column-heading">
+                        <span className="result-column-label">{column}</span>
+                        <span className="result-column-data-type">
+                          {dataType}
+                        </span>
+                        <span className="result-column-default">
+                          Default: {defaultStatus}
+                        </span>
+                      </span>
+                      <span
+                        className="result-column-resize-handle"
+                        role="separator"
+                        aria-label={`Resize ${column} column`}
+                        aria-orientation="vertical"
+                        onPointerDown={(event) => {
+                          handleColumnResizeStart(column, event);
+                        }}
+                      />
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
 
